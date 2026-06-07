@@ -1,0 +1,436 @@
+/* ─────────────────────────────────────────────────────────────────
+   VoiceMode.module.css
+   Floating voice interaction panel — calm, intelligent, non-dominating.
+   Design language: dark glassmorphism, green-tinted accents for voice.
+───────────────────────────────────────────────────────────────── */
+
+/* ── Panel ───────────────────────────────────────────────────── */
+.panel {
+  position: fixed;
+  bottom: 72px;             /* above BottomBar */
+  right:  24px;
+  z-index: 200;
+
+  width:  340px;
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+
+  background: rgba(12, 12, 22, 0.88);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-radius: 20px;
+  box-shadow:
+    0 0  0 1px rgba(74, 222, 128, 0.06),
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0  4px 16px rgba(0, 0, 0, 0.35);
+
+  animation: panel-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px #4ade80; }
+  50%       { opacity: 0.5; box-shadow: 0 0 4px #4ade80; }
+}
+
+.title {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: #4ade80;
+}
+
+.closeBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.closeBtn:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* ── State label ─────────────────────────────────────────────── */
+.stateLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.3px;
+  min-height: 20px;
+  text-align: center;
+}
+
+.thinkHint {
+  color: #a78bfa;
+  font-weight: var(--weight-semibold);
+}
+
+/* ── Orb wrapper ─────────────────────────────────────────────── */
+.orbWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+}
+
+/* ── Orb ─────────────────────────────────────────────────────── */
+.orb {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s var(--ease-standard), box-shadow 0.2s var(--ease-standard);
+
+  /* Default (idle) */
+  background: radial-gradient(circle at 35% 35%,
+    rgba(74, 222, 128, 0.25),
+    rgba(16, 16, 40, 0.9)
+  );
+  box-shadow:
+    0 0 0 1px rgba(74, 222, 128, 0.2),
+    0 0 30px rgba(74, 222, 128, 0.08);
+}
+
+.orb:hover {
+  transform: scale(1.04);
+}
+
+.orb:active {
+  transform: scale(0.97);
+}
+
+/* Listening — breathing pulse */
+.orbListening {
+  background: radial-gradient(circle at 35% 35%,
+    rgba(74, 222, 128, 0.5),
+    rgba(16, 185, 129, 0.3) 60%,
+    rgba(10, 20, 40, 0.8)
+  );
+  box-shadow:
+    0 0 0 2px rgba(74, 222, 128, 0.4),
+    0 0 40px rgba(74, 222, 128, 0.2);
+  animation: orb-breathe 3s ease-in-out infinite;
+}
+
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 2px rgba(74,222,128,0.4), 0 0 40px rgba(74,222,128,0.2); }
+  50%       { transform: scale(1.06); box-shadow: 0 0 0 4px rgba(74,222,128,0.3), 0 0 60px rgba(74,222,128,0.3); }
+}
+
+/* Processing — fast shimmer */
+.orbProcessing {
+  background: radial-gradient(circle at 35% 35%,
+    rgba(167, 139, 250, 0.5),
+    rgba(109, 40, 217, 0.3)  60%,
+    rgba(10,  10, 30, 0.8)
+  );
+  box-shadow:
+    0 0 0 2px rgba(167, 139, 250, 0.35),
+    0 0 50px rgba(139, 92, 246, 0.3);
+  animation: orb-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes orb-shimmer {
+  0%, 100% { opacity: 1;    transform: scale(1);    }
+  50%       { opacity: 0.85; transform: scale(0.97); }
+}
+
+/* Speaking — ripple wave */
+.orbSpeaking {
+  background: radial-gradient(circle at 35% 35%,
+    rgba(96, 165, 250, 0.55),
+    rgba(37, 99, 235, 0.35) 60%,
+    rgba(10, 10, 30, 0.8)
+  );
+  box-shadow:
+    0 0 0 2px rgba(96, 165, 250, 0.4),
+    0 0 50px rgba(59, 130, 246, 0.3);
+  animation: orb-wave 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes orb-wave {
+  from { transform: scale(0.98); box-shadow: 0 0 0 2px rgba(96,165,250,0.4), 0 0 40px rgba(59,130,246,0.25); }
+  to   { transform: scale(1.03); box-shadow: 0 0 0 4px rgba(96,165,250,0.3), 0 0 65px rgba(59,130,246,0.4);  }
+}
+
+/* Think time — calm purple pulse */
+.orbThinkTime {
+  background: radial-gradient(circle at 35% 35%,
+    rgba(167, 139, 250, 0.4),
+    rgba(76, 29, 149, 0.3),
+    rgba(10, 10, 30, 0.8)
+  );
+  box-shadow:
+    0 0 0 2px rgba(167, 139, 250, 0.3),
+    0 0 40px rgba(124, 58, 237, 0.2);
+  animation: orb-breathe 5s ease-in-out infinite;
+}
+
+/* Waiting — calm patient presence (tutor asked a question) */
+.orbWaiting {
+  background: radial-gradient(circle at 35% 35%,
+    rgba(74, 222, 128, 0.3),
+    rgba(16, 185, 129, 0.15) 60%,
+    rgba(10, 20, 40, 0.85)
+  );
+  box-shadow:
+    0 0 0 1px rgba(74, 222, 128, 0.25),
+    0 0 30px rgba(74, 222, 128, 0.1);
+  animation: orb-wait 4s ease-in-out infinite;
+}
+
+@keyframes orb-wait {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 1px rgba(74,222,128,0.25), 0 0 25px rgba(74,222,128,0.1); }
+  50%      { transform: scale(1.02); box-shadow: 0 0 0 2px rgba(74,222,128,0.2),  0 0 40px rgba(74,222,128,0.15); }
+}
+
+/* Error */
+.orbError {
+  background: radial-gradient(circle at 35% 35%,
+    rgba(239, 68, 68, 0.4),
+    rgba(10, 10, 30, 0.8)
+  );
+  box-shadow:
+    0 0 0 2px rgba(239, 68, 68, 0.3),
+    0 0 30px rgba(239, 68, 68, 0.15);
+}
+
+/* ── Ripple rings (listening) ────────────────────────────────── */
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(74, 222, 128, 0.25);
+  pointer-events: none;
+}
+
+.ring1 {
+  width: 130%;
+  height: 130%;
+  animation: ring-expand 2s ease-out infinite;
+}
+
+.ring2 {
+  width: 160%;
+  height: 160%;
+  animation: ring-expand 2s ease-out 0.7s infinite;
+}
+
+@keyframes ring-expand {
+  0%   { opacity: 0.6; transform: scale(0.88); }
+  100% { opacity: 0;   transform: scale(1.0);  }
+}
+
+/* ── Orb icon / timer ────────────────────────────────────────── */
+.orbIcon {
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.8);
+  user-select: none;
+}
+
+.orbTimer {
+  font-size: 28px;
+  font-weight: var(--weight-bold);
+  color: #c4b5fd;
+  font-feature-settings: "tnum";
+  user-select: none;
+}
+
+/* ── Transcript area ─────────────────────────────────────────── */
+.transcriptArea {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+}
+
+.tutorLine,
+.studentLine {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-loose);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tutorLine {
+  color: #93c5fd;
+}
+
+.studentLine {
+  color: var(--color-text-primary);
+}
+
+.speakerLabel {
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--color-text-tertiary);
+}
+
+.interimText {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* ── Hint text ───────────────────────────────────────────────── */
+.hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  text-align: center;
+  min-height: 18px;
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* ── Rate control ────────────────────────────────────────────── */
+.rateControl {
+  display: flex;
+  gap: 4px;
+}
+
+.rateBtn {
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.rateBtn:hover {
+  border-color: rgba(74, 222, 128, 0.3);
+  color: #4ade80;
+}
+
+.rateBtnActive {
+  border-color: rgba(74, 222, 128, 0.5);
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+}
+
+/* ── Interrupt button ────────────────────────────────────────── */
+.interruptBtn {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  white-space: nowrap;
+}
+
+.interruptBtn:hover:not(:disabled) {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.interruptActive {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #f87171 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  animation: pulse-danger 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-danger {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  50%       { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+}
+
+.interruptBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── Unsupported state ───────────────────────────────────────── */
+.unsupported {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+
+.unsupported span {
+  font-size: 36px;
+}
+
+.unsupported p {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.unsupportedSub {
+  font-size: var(--text-xs) !important;
+  color: var(--color-text-tertiary) !important;
+}

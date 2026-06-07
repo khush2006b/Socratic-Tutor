@@ -1,0 +1,140 @@
+.appShell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--color-bg-base);
+}
+
+/* ── Main content ─────────────────────────────────────────────── */
+.main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Left panel ───────────────────────────────────────────────── */
+.leftPanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex-shrink: 0;
+  transition: width var(--duration-normal) var(--ease-standard);
+  position: relative;
+}
+
+.problemSection {
+  overflow: hidden;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.editorSection {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Right panel ──────────────────────────────────────────────── */
+.rightPanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chatSection {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Drag handles ─────────────────────────────────────────────── */
+.hDragHandle {
+  width: 5px;
+  background: var(--color-border-subtle);
+  cursor: col-resize;
+  flex-shrink: 0;
+  position: relative;
+  transition: background var(--duration-fast) var(--ease-standard);
+  z-index: 10;
+}
+
+.hDragHandle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 1px;
+  background: var(--color-border);
+  transition: width var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+
+.hDragHandle:hover,
+.hDragHandle:focus {
+  background: var(--color-accent-muted);
+  outline: none;
+}
+
+.hDragHandle:hover::before,
+.hDragHandle:focus::before {
+  width: 2px;
+  background: var(--color-accent);
+}
+
+.vDragHandle {
+  height: 5px;
+  background: var(--color-border-subtle);
+  cursor: row-resize;
+  flex-shrink: 0;
+  position: relative;
+  transition: background var(--duration-fast) var(--ease-standard);
+  z-index: 10;
+}
+
+.vDragHandle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  height: 1px;
+  background: var(--color-border);
+  transition: height var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+
+.vDragHandle:hover,
+.vDragHandle:focus {
+  background: var(--color-accent-muted);
+  outline: none;
+}
+
+.vDragHandle:hover::before,
+.vDragHandle:focus::before {
+  height: 2px;
+  background: var(--color-accent);
+}
+
+/* ── Responsive: mobile stack ─────────────────────────────────── */
+@media (max-width: 768px) {
+  .main {
+    flex-direction: column;
+  }
+
+  .leftPanel {
+    width: 100% !important;
+    height: 55% !important;
+    flex-shrink: 0;
+  }
+
+  .hDragHandle {
+    display: none;
+  }
+
+  .rightPanel {
+    flex: 1;
+    border-top: 1px solid var(--color-border-subtle);
+  }
+}
