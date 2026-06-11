@@ -27,11 +27,9 @@ from ..services.session_manager import (
     create_session,
     update_session,
     upsert_student_profile,
-    persist_tags,
     mark_problem_solved,
     save_message,
 )
-from ..services.tag_parser import ParsedTags
 from ..graph.tutor_graph import tutor_graph
 
 logger = logging.getLogger(__name__)
@@ -110,6 +108,7 @@ async def tutor_stream(
         "signals":          request.signals.model_dump(by_alias=False),
         "voice_mode":       request.voice_mode,
         # Output fields (populated by graph nodes)
+        "student_context":  "",
         "context_prompt":   "",
         "lc_messages":      [],
         "full_response":    "",
@@ -155,28 +154,11 @@ async def tutor_stream(
             full_response = final_output.get("full_response", "")
             raw_tags      = final_output.get("parsed_tags", {})
 
-            # Persist misconceptions + mastery events + solved to DB
-            # NOTE: Tutor message is saved by the LangGraph persist_data node,
-            #       so we do NOT save it again here (avoids double-insert).
+            # NOTE: Tags (misconceptions + mastery events) are already persisted
+            #       by the LangGraph persist_data node — do NOT persist again here.
+            #       The router only handles: (1) mark_problem_solved, (2) SSE tags event.
             if raw_tags:
                 problem_solved = raw_tags.get("problem_solved", False)
-                tags = ParsedTags(
-                    misconceptions  = raw_tags.get("misconceptions", []),
-                    mastery_events  = raw_tags.get("mastery_events", []),
-                    visualizations  = raw_tags.get("visualizations", []),
-                    wait_seconds    = raw_tags.get("wait_seconds"),
-                    problem_solved  = problem_solved,
-                )
-                problem_id = request.problem.id if request.problem else None
-                pattern    = request.problem.patterns[0] if request.problem and request.problem.patterns else None
-                background_tasks.add_task(
-                    persist_tags,
-                    session_id  = session_id,
-                    student_id  = student_id,
-                    problem_id  = problem_id,
-                    pattern     = pattern,
-                    tags        = tags,
-                )
 
                 # If problem solved, update session phase + profile immediately
                 if problem_solved and session_id:

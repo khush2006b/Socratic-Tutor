@@ -17,6 +17,7 @@ from ..config import get_settings
 from ..services.socratic_prompt import SYSTEM_PROMPT, build_context_prompt
 from ..services.tag_parser import parse_tags, ParsedTags, strip_voice_tags
 from ..services.session_manager import save_message, persist_tags, load_calibration_state, save_calibration_state
+from ..services.student_context import build_student_context
 from ..services.calibration import CalibrationState
 from .state import TutorState, HintState
 
@@ -51,7 +52,7 @@ def get_llm(use_fallback: bool = False):
                 google_api_key=settings.gemini_api_key,
                 temperature=0.7,
                 top_p=0.9,
-                max_output_tokens=1024,
+                max_output_tokens=1536,
                 streaming=True,
                 max_retries=0,          # no tenacity retry — we handle fallback ourselves
             )
@@ -64,7 +65,7 @@ def get_llm(use_fallback: bool = False):
             google_api_key=settings.gemini_api_key,
             temperature=0.7,
             top_p=0.9,
-            max_output_tokens=1024,
+            max_output_tokens=2048,
             streaming=True,
             max_retries=0,              # no tenacity retry — we handle fallback ourselves
         )
@@ -72,33 +73,64 @@ def get_llm(use_fallback: bool = False):
     return _primary_llm
 
 
+# ── Loop detection ────────────────────────────────────────────────
+
+def _is_looping(messages: list[dict], threshold: int = 3) -> bool:
+    """
+    Check if the last N tutor messages are semantically repeating.
+    Compares first 50 chars of each — if all identical starts, it's looping.
+    """
+    logger.info("Roles in last 8 messages: %s", [m.get("role") for m in messages[-8:]])
+    tutor_msgs = [
+        m["content"] for m in messages[-8:]
+        if m.get("role") in ("tutor", "assistant") and m.get("content")
+    ]
+    if len(tutor_msgs) < threshold:
+        return False
+    last_n = tutor_msgs[-threshold:]
+    first_words = [m[:50].strip().lower() for m in last_n]
+    return len(set(first_words)) == 1  # all identical starts
+
+
 # ── Helper: parse frontend message list into LangChain messages ───
 
 def _build_lc_messages(
     messages: list[dict],
     context_prompt: str,
+    force_direct_answer: bool = False,
 ) -> list:
     """
     Convert frontend message dicts to LangChain message objects.
-    The context prompt is injected into the last HumanMessage.
+    Context is merged into SystemMessage so it stays at highest priority
+    regardless of conversation length.
     """
-    lc = [SystemMessage(content=SYSTEM_PROMPT)]
+    override = ""
+    if force_direct_answer:
+        override = (
+            "\n\n**⚠️ OVERRIDE — LOOP DETECTED:**\n"
+            "The student has been stuck on this exact point for 3+ turns. "
+            "You MUST directly state the answer in ONE sentence, "
+            "then move to the NEXT concept. Do NOT rephrase the same question.\n"
+        )
+
+    # System message = base prompt + current context + override
+    # This ensures context is always at highest priority position
+    full_system = f"{SYSTEM_PROMPT}\n\n---\n\n{context_prompt}{override}"
+    lc = [SystemMessage(content=full_system)]
 
     for msg in messages:
         role    = msg.get("role", "")
         content = msg.get("content", "")
+        if not content:
+            continue
         if role == "student":
             lc.append(HumanMessage(content=content))
-        elif role == "tutor":
+        elif role in ("tutor", "assistant"):
             lc.append(AIMessage(content=content))
 
-    # Inject context into the last HumanMessage (or append one)
-    if lc and isinstance(lc[-1], HumanMessage):
-        lc[-1] = HumanMessage(
-            content=f"{context_prompt}\n\n**Student's message:**\n{lc[-1].content}"
-        )
-    else:
-        lc.append(HumanMessage(content=context_prompt))
+    # If last message isn't from student, add a nudge
+    if not lc or not isinstance(lc[-1], HumanMessage):
+        lc.append(HumanMessage(content="Please continue."))
 
     return lc
 
@@ -151,6 +183,15 @@ async def build_context(state: TutorState) -> dict:
     # Update calibration from frontend signals
     calibration.update_from_frontend_signals(sig)
 
+    # Load cross-session student profile context
+    student_ctx = state.get("student_context", "")
+    if not student_ctx and state.get("student_id"):
+        try:
+            student_ctx = await build_student_context(state["student_id"])
+        except Exception as exc:
+            logger.warning("Failed to build student context: %s", exc)
+            student_ctx = ""
+
     context = build_context_prompt(
         problem=problem,
         code=state.get("code", ""),
@@ -160,11 +201,24 @@ async def build_context(state: TutorState) -> dict:
         signals=signals,
         voice_mode=state.get("voice_mode", False),
         calibration_state=calibration,
+        student_context=student_ctx,
     )
 
-    lc_messages = _build_lc_messages(state.get("messages", []), context)
+    # Detect if tutor is looping (same question 3+ times)
+    raw_messages = state.get("messages", [])
+    looping = _is_looping(raw_messages)
+    if looping:
+        logger.warning("Loop detected — injecting direct-answer override")
+
+    lc_messages = _build_lc_messages(raw_messages, context, force_direct_answer=looping)
+
+    logger.info(
+        "build_context: %d messages, %d LangChain msgs, looping=%s",
+        len(raw_messages), len(lc_messages), looping,
+    )
 
     return {
+        "student_context": student_ctx,
         "context_prompt": context,
         "lc_messages": lc_messages,
         "calibration_state": calibration.to_dict(),
@@ -188,7 +242,17 @@ async def generate_response(state: TutorState) -> dict:
             response = await llm.ainvoke(lc_messages)
             if use_fallback:
                 logger.info("Used fallback model successfully")
-            return {"full_response": response.content, "error": None}
+
+            # Guard against empty / truncated responses
+            response_text = response.content.strip() if response.content else ""
+            if not response_text:
+                logger.warning("Empty response from %s — using fallback message", model_label)
+                response_text = (
+                    "Let me think about that differently. [PAUSE:1] "
+                    "Can you walk me through your reasoning step by step? [WAIT]"
+                )
+
+            return {"full_response": response_text, "error": None}
         except Exception as exc:
             err_str = str(exc)
             is_rate_limit = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower()

@@ -19,11 +19,12 @@ class TutorState(TypedDict):
     voice_mode: bool                # True when student is in voice conversation mode
 
     # ── Built during graph execution ───────────────────────────────
-    context_prompt: str             # assembled by build_context
-    lc_messages: list               # LangChain message objects
-    full_response: str              # complete Gemini response text
-    parsed_tags: dict               # { misconceptions, mastery_events, visualizations }
-    calibration_state: dict         # CalibrationState serialized as dict
+    student_context: str              # cross-session cognitive profile context
+    context_prompt: str               # assembled by build_context
+    lc_messages: list                 # LangChain message objects
+    full_response: str                # complete Gemini response text
+    parsed_tags: dict                 # { misconceptions, mastery_events, visualizations }
+    calibration_state: dict           # CalibrationState serialized as dict
     error: Optional[str]
 
 

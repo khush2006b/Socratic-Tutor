@@ -22,6 +22,7 @@ from ..services.session_manager import (
     complete_student_profile,
 )
 from ..services.note_generator import generate_session_notes
+from ..services.profile_aggregator import rebuild_student_profile, log_solved_problem
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -93,6 +94,29 @@ async def save_session_reflection(
         reflection     = reflection.answers or {},
         hints_used     = reflection.hints_used,
         elapsed_seconds= reflection.elapsed_seconds,
+    )
+
+    # Log solved problem + rebuild cognitive profile
+    problem_data = reflection.problem_data or {}
+    pattern = (problem_data.get("patterns") or ["general"])[0] if problem_data else "general"
+    difficulty = problem_data.get("difficulty", "Medium") if problem_data else "Medium"
+
+    background_tasks.add_task(
+        log_solved_problem,
+        student_id      = student_id,
+        session_id      = session_id,
+        problem_id      = reflection.problem_id,
+        problem_title   = reflection.problem_title,
+        pattern         = pattern,
+        difficulty      = difficulty,
+        hints_used      = reflection.hints_used,
+        elapsed_seconds = reflection.elapsed_seconds,
+        messages        = reflection.messages or [],
+    )
+
+    background_tasks.add_task(
+        rebuild_student_profile,
+        student_id = student_id,
     )
 
     return SessionSummary(

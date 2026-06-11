@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import re as _re
+from string import Template as _Template
 from typing import Optional
 
 from ..services.database import get_db
@@ -26,55 +27,66 @@ logger = logging.getLogger(__name__)
 
 _SYSTEM = """You are an expert CS educator analysing a completed tutoring session.
 Your job is to extract concise, actionable notes for the student to review later.
-Always respond with ONLY valid JSON — no markdown, no explanation."""
 
-_PROMPT_TEMPLATE = """
+CRITICAL JSON RULES — follow exactly:
+- Respond with ONLY valid JSON — no markdown, no explanation outside the JSON
+- Inside JSON string values: do NOT use backticks, asterisks, or markdown formatting
+- Do NOT use **bold**, *italic*, or `code` inside string values
+- Use plain text only inside all JSON string values
+- Do not use double quotes inside string values — rephrase to avoid them"""
+
+_PROMPT_TEMPLATE = _Template("""
 ## Session Summary
-Problem: {problem_title}
-Difficulty: {difficulty}
-Patterns involved: {patterns}
-Time spent: {elapsed_min} minutes
-Hints used: {hints_used}
+Problem: $problem_title
+Difficulty: $difficulty
+Patterns involved: $patterns
+Time spent: $elapsed_min minutes
+Hints used: $hints_used
 
-## Conversation (student ↔ tutor)
-{conversation}
+## Conversation (student <-> tutor)
+$conversation
 
-## Student's Reflection
-- Pattern used: {reflection_pattern}
-- Key insight: {reflection_insight}
-- Where stuck: {reflection_stuck}
-- Similar problems: {reflection_transfer}
+## Student Reflection
+- Pattern used: $reflection_pattern
+- Key insight: $reflection_insight
+- Where stuck: $reflection_stuck
+- Similar problems: $reflection_transfer
 
 ---
 
-Analyse this session and extract 3–6 meaningful notes for the student.
+Analyse this session and extract 3-6 meaningful notes for the student.
 
 For each note choose ONE category:
-- "mistake"   — a specific wrong assumption, edge-case miss, or logical error the student made
-- "technique" — a new algorithmic technique, coding trick, or problem-solving approach they learned
-- "insight"   — a key "aha" realisation that changed how they thought about the problem
-- "pattern"   — understanding of a named algorithmic pattern and when it applies
+- "mistake"   - a specific wrong assumption, edge-case miss, or logical error
+- "technique" - a new algorithmic technique or approach they learned
+- "insight"   - a key realisation that changed how they thought about the problem
+- "pattern"   - understanding of a named algorithmic pattern and when it applies
 
 Rules:
-1. Be SPECIFIC — reference the actual problem, variable names, or code logic
-2. Write the content from the student's perspective ("You learned...", "You confused...", "You realised...")
+1. Be SPECIFIC - reference the actual problem, variable names, or code logic
+2. Write from the student's perspective ("You learned...", "You confused...", "You realised...")
 3. Keep titles under 10 words
 4. Keep content 2-4 sentences
-5. Only generate notes for things that actually happened — no hallucinations
-6. Include 1-3 relevant tags per note (e.g. ["two pointers", "array", "edge case"])
+5. Only generate notes for things that actually happened - no hallucinations
+6. Include 1-3 relevant tags per note
 
-Respond with ONLY this JSON (no markdown):
-{{
+Respond with ONLY valid JSON in this exact format.
+IMPORTANT: Inside all string values use plain text only.
+No backticks, no asterisks, no markdown formatting inside strings.
+No double quotes inside string values.
+Example of WRONG content value: "Use `max - min` for **each** subarray"
+Example of CORRECT content value: "Use max minus min for each subarray"
+{
   "notes": [
-    {{
-      "category": "mistake|technique|insight|pattern",
-      "title": "...",
-      "content": "...",
+    {
+      "category": "mistake",
+      "title": "short title here",
+      "content": "2-4 sentences in plain text here",
       "tags": ["tag1", "tag2"]
-    }}
+    }
   ]
-}}
-"""
+}
+""")
 
 
 def _build_conversation_text(messages: list[dict], max_chars: int = 8000) -> str:
@@ -128,14 +140,25 @@ def _robust_json_parse(raw: str) -> dict:
     cleaned = cleaned.replace('\u201c', '"').replace('\u201d', '"')  # "" → ""
     cleaned = cleaned.replace('\u2018', "'").replace('\u2019', "'")  # '' → ''
 
-    # 4b. Strip JS-style comments  // ...  and  /* ... */
+    # 4b. Strip markdown formatting from inside string values
+    #     Remove **, *, and ` that appear inside JSON strings
+    def _strip_markdown_in_strings(m):
+        s = m.group(0)
+        inner = s[1:-1]  # strip outer quotes
+        inner = inner.replace('**', '').replace('`', '')
+        # Remove lone * used for italics (but keep \*)
+        inner = _re.sub(r'(?<!\\)\*', '', inner)
+        return f'"{inner}"'
+    cleaned = _re.sub(r'"(?:[^"\\]|\\.)*"', _strip_markdown_in_strings, cleaned, flags=_re.DOTALL)
+
+    # 4c. Strip JS-style comments  // ...  and  /* ... */
     cleaned = _re.sub(r'//[^\n]*', '', cleaned)
     cleaned = _re.sub(r'/\*.*?\*/', '', cleaned, flags=_re.DOTALL)
 
-    # 4c. Remove trailing commas before } or ]
+    # 4d. Remove trailing commas before } or ]
     cleaned = _re.sub(r',(\s*[}\]])', r'\1', cleaned)
 
-    # 4d. Remove control characters (except \n \r \t)
+    # 4e. Remove control characters (except \n \r \t)
     cleaned = _re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', cleaned)
 
     try:
@@ -180,30 +203,37 @@ def _robust_json_parse(raw: str) -> dict:
         pass
 
     # 8. Nuclear option: try to extract individual note objects with regex
-    #    and reconstruct the JSON manually
-    try:
-        note_pattern = _re.compile(
-            r'\{\s*"category"\s*:\s*"([^"]+)"\s*,\s*'
-            r'"title"\s*:\s*"([^"]+)"\s*,\s*'
-            r'"content"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*'
-            r'"tags"\s*:\s*\[(.*?)\]\s*\}',
-            _re.DOTALL,
-        )
-        notes = []
-        for m in note_pattern.finditer(key_fixed):
-            tags_raw = m.group(4).strip()
-            tags = [t.strip().strip('"').strip("'") for t in tags_raw.split(",") if t.strip()]
-            notes.append({
-                "category": m.group(1),
-                "title": m.group(2),
-                "content": m.group(3).replace('\\n', '\n').replace('\\"', '"'),
-                "tags": tags,
-            })
-        if notes:
-            logger.info("JSON repair: extracted %d notes via regex fallback", len(notes))
-            return {"notes": notes}
-    except Exception:
-        pass
+    #    Run on `cleaned` (before single-quote corruption) to preserve apostrophes
+    #    Uses a more lenient content pattern
+    for source_text in (key_fixed, sq_fixed, fixed, cleaned, text):
+        try:
+            note_pattern = _re.compile(
+                r'\{\s*"category"\s*:\s*"([^"]+)"\s*,\s*'
+                r'"title"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*'
+                r'"content"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*'
+                r'"tags"\s*:\s*\[(.*?)\]\s*\}',
+                _re.DOTALL,
+            )
+            notes = []
+            for m in note_pattern.finditer(source_text):
+                tags_raw = m.group(4).strip()
+                tags = [t.strip().strip('"').strip("'") for t in tags_raw.split(",") if t.strip()]
+                content = m.group(3).replace('\\n', '\n').replace('\\"', '"')
+                # Strip any remaining markdown from content
+                content = content.replace('**', '').replace('`', '')
+                content = _re.sub(r'(?<!\\)\*', '', content)
+                title = m.group(2).replace('`', '').replace('**', '')
+                notes.append({
+                    "category": m.group(1),
+                    "title": title,
+                    "content": content,
+                    "tags": tags,
+                })
+            if notes:
+                logger.info("JSON repair: extracted %d notes via regex fallback", len(notes))
+                return {"notes": notes}
+        except Exception:
+            continue
 
     raise ValueError(
         f"JSON parse failed after cleaning.\n"
@@ -243,17 +273,17 @@ async def generate_session_notes(
 
     conversation = _build_conversation_text(messages)
 
-    prompt = _PROMPT_TEMPLATE.format(
-        problem_title      = problem_title or "Unknown Problem",
-        difficulty         = difficulty,
-        patterns           = patterns,
-        elapsed_min        = elapsed_min,
-        hints_used         = hints_used,
-        conversation       = conversation,
-        reflection_pattern = reflection.get("pattern", "—"),
-        reflection_insight = reflection.get("insight", "—"),
-        reflection_stuck   = reflection.get("stuck",   "—"),
-        reflection_transfer= reflection.get("transfer","—"),
+    prompt = _PROMPT_TEMPLATE.safe_substitute(
+        problem_title       = problem_title or "Unknown Problem",
+        difficulty          = difficulty,
+        patterns            = patterns,
+        elapsed_min         = elapsed_min,
+        hints_used          = hints_used,
+        conversation        = conversation,
+        reflection_pattern  = reflection.get("pattern", "—"),
+        reflection_insight  = reflection.get("insight", "—"),
+        reflection_stuck    = reflection.get("stuck",   "—"),
+        reflection_transfer = reflection.get("transfer","—"),
     )
 
     try:
@@ -263,7 +293,8 @@ async def generate_session_notes(
                 _SYSTEM + "\n\n" + prompt,
                 generation_config={
                     "temperature": 0.3,
-                    "response_mime_type": "application/json",  # forces clean JSON
+                    "response_mime_type": "application/json",
+                    "max_output_tokens": 2048,  # prevents truncated JSON
                 },
             )
         )
