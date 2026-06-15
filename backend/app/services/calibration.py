@@ -38,6 +38,7 @@ VALID_CALIBRATION_TYPES = frozenset({
     "transfer_shown",
     "self_corrected",
     "frustration_detected",
+    "disagreement_detected",
     "confusion_detected",
     "edge_case_awareness",
     "misconception_persistent",
@@ -149,6 +150,12 @@ class CalibrationState:
         elif tag_type == "frustration_detected":
             self.frustration = _up(self.frustration, 2.5)
             self.compression_readiness = _up(self.compression_readiness, 1.5)
+
+        elif tag_type == "disagreement_detected":
+            # Student is pushing back with reasoning — they're frustrated but engaged
+            self.frustration = _up(self.frustration, 1.0)  # mild frustration
+            self.reasoning_quality = _up(self.reasoning_quality, 0.5)  # they're arguing with evidence
+            self.self_correction = _up(self.self_correction, 0.3)  # shows independent thinking
 
         elif tag_type == "confusion_detected":
             self.confusion = _up(self.confusion, 2.0)
