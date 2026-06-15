@@ -63,6 +63,8 @@ create table if not exists reflections (
   transfer_answer  text,   -- "Name 2-3 similar problems"
   hints_used       integer default 0,
   elapsed_seconds  integer default 0,
+  quality_level    text check (quality_level in ('surface','structural','transferable')),
+  quality_feedback text,   -- AI-generated feedback on reflection depth
   created_at       timestamptz default now()
 );
 
@@ -171,7 +173,7 @@ create table if not exists notes (
   problem_id      integer,
   problem_title   text,
   category        text not null
-                    check (category in ('mistake','technique','insight','pattern')),
+                    check (category in ('mistake','technique','insight','pattern','process')),
   title           text not null,
   content         text not null,
   tags            text[] default '{}',

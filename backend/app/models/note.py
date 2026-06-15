@@ -13,7 +13,7 @@ class NoteOut(BaseModel):
     session_id:    Optional[str]
     problem_id:    Optional[int]
     problem_title: Optional[str]
-    category:      str   # 'mistake' | 'technique' | 'insight' | 'pattern'
+    category:      str   # 'mistake' | 'technique' | 'insight' | 'pattern' | 'process'
     title:         str
     content:       str
     tags:          List[str] = []
