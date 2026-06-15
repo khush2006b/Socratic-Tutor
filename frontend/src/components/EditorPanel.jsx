@@ -1,12 +1,13 @@
 /**
  * EditorPanel.jsx
- * Monaco code editor with language selector, mock run button, output console.
+ * Monaco code editor with language selector, real code execution, stdin input, output console.
  * Fires debounced snapshot every 2s to record code diff signals.
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import useSessionStore from '../store/sessionStore';
+import { API_BASE_URL } from '../api/client.js';
 import styles from './EditorPanel.module.css';
 
 /* ── Constants ────────────────────────────────────────────────── */
@@ -70,31 +71,61 @@ const SOCRATIC_THEME = {
   },
 };
 
-/** Stage 1 mock outputs */
-const MOCK_PASS_OUTPUTS = [
-  'All 3 test cases passed ✓\n\nRuntime: 68 ms  (beats 82%)\nMemory:  14.2 MB (beats 71%)',
-  'Test 1: Passed ✓\nTest 2: Passed ✓\nTest 3: Passed ✓\n\nRuntime: 52 ms\nMemory:  13.8 MB',
-];
 
-/* ── Sub-component: Output console ────────────────────────────── */
+/* ── Sub-component: Input/Output console ──────────────────────── */
 
-function OutputConsole({ output, isRunning }) {
-  if (!output && !isRunning) return null;
+function IOConsole({ output, stderr, exitCode, isRunning, stdin, onStdinChange, timedOut }) {
+  const hasOutput = output || stderr || isRunning;
 
   return (
-    <div className={styles.outputPanel} aria-live="polite" aria-label="Code output">
-      <div className={styles.outputHeader}>
-        <span className={styles.outputTitle}>Output</span>
-        {isRunning && (
-          <span className={styles.runDot} aria-hidden="true" />
-        )}
+    <div className={styles.ioPanel}>
+      {/* Stdin input */}
+      <div className={styles.stdinSection}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionTitle}>Input (stdin)</span>
+        </div>
+        <textarea
+          id="input-stdin"
+          className={styles.stdinTextarea}
+          placeholder="Enter input here (one value per line)…"
+          value={stdin}
+          onChange={(e) => onStdinChange(e.target.value)}
+          rows={3}
+          spellCheck={false}
+          aria-label="Standard input for code execution"
+        />
       </div>
-      <pre className={styles.outputContent}>
-        {isRunning ? 'Running…' : output}
-      </pre>
+
+      {/* Output */}
+      {hasOutput && (
+        <div className={styles.outputSection} aria-live="polite" aria-label="Code output">
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionTitle}>Output</span>
+            {isRunning && <span className={styles.runDot} aria-hidden="true" />}
+            {!isRunning && exitCode !== null && exitCode !== undefined && (
+              <span className={`${styles.exitBadge} ${exitCode === 0 ? styles.exitSuccess : styles.exitError}`}>
+                {exitCode === 0 ? '✓ exit 0' : `✗ exit ${exitCode}`}
+              </span>
+            )}
+            {timedOut && (
+              <span className={`${styles.exitBadge} ${styles.exitError}`}>⏱ timed out</span>
+            )}
+          </div>
+          <pre className={styles.outputContent}>
+            {isRunning ? 'Running…' : (
+              <>
+                {output && <span>{output}</span>}
+                {stderr && <span className={styles.stderrText}>{output ? '\n' : ''}{stderr}</span>}
+                {!output && !stderr && !isRunning && <span className={styles.emptyOutput}>No output</span>}
+              </>
+            )}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }
+
 
 /* ── Main component ───────────────────────────────────────────── */
 
@@ -107,8 +138,13 @@ export default function EditorPanel() {
   const setLanguage  = useSessionStore((s) => s.setLanguage);
   const snapshotCode = useSessionStore((s) => s.snapshotCode);
 
-  const [output, setOutput]     = useState('');
+  const [stdout, setStdout]       = useState('');
+  const [stderr, setStderr]       = useState('');
+  const [exitCode, setExitCode]   = useState(null);
+  const [timedOut, setTimedOut]   = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [stdin, setStdin]         = useState('');
+  const [showIO, setShowIO]       = useState(false);
 
   const editorRef   = useRef(null);
   const debounceRef = useRef(null);
@@ -117,7 +153,9 @@ export default function EditorPanel() {
   useEffect(() => {
     if (problem?.starterCode?.[language]) {
       setCode(problem.starterCode[language]);
-      setOutput('');
+      setStdout('');
+      setStderr('');
+      setExitCode(null);
     }
   }, [problem?.id, language]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -141,27 +179,63 @@ export default function EditorPanel() {
   }, [setLanguage]);
 
   const handleRun = useCallback(async () => {
-    setIsRunning(true);
-    setOutput('');
-
-    /* Stage 1: simulate execution (no backend yet) */
-    await new Promise((r) => setTimeout(r, 900));
-
-    const hasCode = code.trim().length > 20;
-    if (hasCode) {
-      const out = MOCK_PASS_OUTPUTS[Math.floor(Math.random() * MOCK_PASS_OUTPUTS.length)];
-      setOutput(out);
-    } else {
-      setOutput('Nothing to run — write your solution first.');
+    if (!code.trim()) {
+      setStdout('');
+      setStderr('Write some code first.');
+      setExitCode(1);
+      setShowIO(true);
+      return;
     }
 
-    setIsRunning(false);
-  }, [code]);
+    setIsRunning(true);
+    setStdout('');
+    setStderr('');
+    setExitCode(null);
+    setTimedOut(false);
+    setShowIO(true);
+
+    try {
+      const resp = await fetch(`${API_BASE_URL}/api/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          language,
+          stdin,
+        }),
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => 'Unknown error');
+        setStderr(`Execution service error: ${resp.status}\n${errText}`);
+        setExitCode(1);
+      } else {
+        const data = await resp.json();
+        setStdout(data.stdout || '');
+        setStderr(data.stderr || '');
+        setExitCode(data.exit_code ?? 0);
+        setTimedOut(data.timed_out || false);
+      }
+    } catch (err) {
+      setStderr(`Network error: ${err.message}`);
+      setExitCode(1);
+    } finally {
+      setIsRunning(false);
+    }
+  }, [code, language, stdin]);
+
+  /* Ctrl+Enter shortcut to run */
+  const handleEditorKeyDown = useCallback((e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleRun();
+    }
+  }, [handleRun]);
 
   const isDisabled = phase === 'idle' || phase === 'complete';
 
   return (
-    <div className={styles.panel}>
+    <div className={styles.panel} onKeyDown={handleEditorKeyDown}>
       {/* Toolbar */}
       <div className={styles.toolbar}>
         <span className={styles.toolbarTitle}>Solution</span>
@@ -179,11 +253,22 @@ export default function EditorPanel() {
           </select>
 
           <button
+            id="btn-toggle-io"
+            className={`${styles.ioToggle} ${showIO ? styles.ioToggleActive : ''}`}
+            onClick={() => setShowIO(!showIO)}
+            aria-label={showIO ? 'Hide I/O panel' : 'Show I/O panel'}
+            title="Toggle Input/Output"
+          >
+            ⌨
+          </button>
+
+          <button
             id="btn-run-code"
             className={styles.runButton}
             onClick={handleRun}
             disabled={isRunning || isDisabled}
-            aria-label="Run code"
+            aria-label="Run code (Ctrl+Enter)"
+            title="Run code (Ctrl+Enter)"
           >
             {isRunning ? (
               <>
@@ -220,8 +305,18 @@ export default function EditorPanel() {
         />
       </div>
 
-      {/* Output console */}
-      <OutputConsole output={output} isRunning={isRunning} />
+      {/* I/O Console */}
+      {showIO && (
+        <IOConsole
+          output={stdout}
+          stderr={stderr}
+          exitCode={exitCode}
+          isRunning={isRunning}
+          stdin={stdin}
+          onStdinChange={setStdin}
+          timedOut={timedOut}
+        />
+      )}
     </div>
   );
 }
