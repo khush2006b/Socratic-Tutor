@@ -12,6 +12,7 @@ import asyncio
 import json
 import logging
 import re as _re
+from string import Template as _Template
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -23,17 +24,17 @@ logger = logging.getLogger(__name__)
 
 # ── Strategy/Mistake Extraction Prompt ────────────────────────────
 
-_EXTRACT_PROMPT = """\
+_EXTRACT_PROMPT = _Template("""\
 Analyse this tutoring conversation and extract two things:
 1. strategy: The key algorithmic strategy the student used to solve the problem (1 sentence, max 15 words)
 2. mistake: The main mistake or misconception the student had during the session (1 sentence, max 15 words). If no significant mistake, use "none".
 
 Conversation (last 10 messages):
-{conversation}
+$conversation
 
-Respond with ONLY valid JSON:
-{{"strategy": "...", "mistake": "..."}}
-"""
+Respond with ONLY valid JSON. No markdown, no backticks.
+{"strategy": "...", "mistake": "..."}
+""")
 
 
 def _build_conversation_snippet(messages: list[dict], max_messages: int = 10) -> str:
@@ -85,7 +86,7 @@ async def log_solved_problem(
         if conversation:
             response = await asyncio.to_thread(
                 lambda: model.generate_content(
-                    _EXTRACT_PROMPT.format(conversation=conversation),
+                    _EXTRACT_PROMPT.safe_substitute(conversation=conversation),
                     generation_config={
                         "temperature": 0.2,
                         "response_mime_type": "application/json",

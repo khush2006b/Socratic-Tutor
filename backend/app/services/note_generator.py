@@ -54,13 +54,17 @@ $conversation
 
 ---
 
-Analyse this session and extract 3-6 meaningful notes for the student.
+Analyse this session and extract 3-7 meaningful notes for the student.
 
 For each note choose ONE category:
 - "mistake"   - a specific wrong assumption, edge-case miss, or logical error
 - "technique" - a new algorithmic technique or approach they learned
 - "insight"   - a key realisation that changed how they thought about the problem
 - "pattern"   - understanding of a named algorithmic pattern and when it applies
+- "process"   - a debugging habit, learning strategy, or meta-cognitive insight
+              Examples: "Tracing on small inputs resolved the disagreement",
+              "I only accepted the fix after running my own code on an example",
+              "Reconstructing both approaches side-by-side revealed the difference"
 
 Rules:
 1. Be SPECIFIC - reference the actual problem, variable names, or code logic
@@ -69,6 +73,11 @@ Rules:
 4. Keep content 2-4 sentences
 5. Only generate notes for things that actually happened - no hallucinations
 6. Include 1-3 relevant tags per note
+7. ALWAYS include at least one "process" note if the student:
+   - Disagreed with the tutor and eventually resolved it
+   - Self-corrected after a specific trigger
+   - Used tracing/examples to debug their own logic
+   - Changed their approach after a concrete counterexample
 
 Respond with ONLY valid JSON in this exact format.
 IMPORTANT: Inside all string values use plain text only.
@@ -324,7 +333,7 @@ async def generate_session_notes(
         from ..services.session_manager import _now
         for note in notes:
             category = note.get("category", "insight")
-            if category not in ("mistake", "technique", "insight", "pattern"):
+            if category not in ("mistake", "technique", "insight", "pattern", "process"):
                 category = "insight"
             row = {
                 "session_id":    session_id,
