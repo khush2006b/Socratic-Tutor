@@ -245,7 +245,7 @@ export default function ReflectionModal() {
             <span className={styles.savedIcon} aria-hidden="true">✦</span>
             <h3 className={styles.savedTitle}>Session saved!</h3>
             <p className={styles.savedText}>
-              Your reflection has been recorded. In Stage 2, this will update your mastery model and generate personalised next-problem recommendations.
+              Your reflection has been recorded and is being evaluated. AI-generated study notes and a quality assessment of your reflection will appear in your Notes dashboard shortly.
             </p>
             <div className={styles.savedStats}>
               <Stat label="Time spent" value={formatTime(elapsedSeconds)} />

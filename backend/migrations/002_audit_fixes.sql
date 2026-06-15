@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS notes (
   problem_id      integer,
   problem_title   text,
   category        text NOT NULL
-                    CHECK (category IN ('mistake','technique','insight','pattern')),
+                    CHECK (category IN ('mistake','technique','insight','pattern','process')),
   title           text NOT NULL,
   content         text NOT NULL,
   tags            text[] DEFAULT '{}',
@@ -38,3 +38,13 @@ CREATE TABLE IF NOT EXISTS notes (
 
 CREATE INDEX IF NOT EXISTS idx_notes_student_id ON notes(student_id);
 CREATE INDEX IF NOT EXISTS idx_notes_session_id ON notes(session_id);
+
+-- 5. Add reflection quality evaluation columns
+ALTER TABLE reflections ADD COLUMN IF NOT EXISTS quality_level text
+  CHECK (quality_level IN ('surface','structural','transferable'));
+ALTER TABLE reflections ADD COLUMN IF NOT EXISTS quality_feedback text;
+
+-- 6. Update notes category CHECK to include 'process'
+ALTER TABLE notes DROP CONSTRAINT IF EXISTS notes_category_check;
+ALTER TABLE notes ADD CONSTRAINT notes_category_check
+  CHECK (category IN ('mistake','technique','insight','pattern','process'));
