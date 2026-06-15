@@ -36,12 +36,37 @@
   to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
+/* Actively being dragged — disable transitions, add lift shadow */
+.panelDragging {
+  transition: none !important;
+  box-shadow:
+    0 0  0 1px rgba(74, 222, 128, 0.1),
+    0 32px 80px rgba(0, 0, 0, 0.65),
+    0  8px 24px rgba(0, 0, 0, 0.45);
+  user-select: none;
+}
+
 /* ── Header ──────────────────────────────────────────────────── */
 .header {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  user-select: none;
+  touch-action: none;  /* prevent scroll while dragging on touch */
+}
+
+/* Drag grip dots — subtle visual hint that the header is draggable */
+.header::before {
+  content: '⠿';
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.12);
+  letter-spacing: 2px;
+  pointer-events: none;
 }
 
 .headerLeft {

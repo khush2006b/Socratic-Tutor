@@ -14,7 +14,7 @@
  * The text chat panel stays fully in sync — every voice turn appears there too.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useVoiceTutor }                    from '../hooks/useVoiceTutor';
 import { VS }                               from '../hooks/useConversationState';
 import useSessionStore                       from '../store/sessionStore';
@@ -185,10 +185,63 @@ export default function VoiceMode({ onClose }) {
     );
   }
 
+  /* ── Drag-to-move logic ──────────────────────────────────────── */
+  const panelRef     = useRef(null);
+  const dragOffset   = useRef({ x: 0, y: 0 });
+  const [pos, setPos] = useState(null); // null = default CSS position
+  const [isDragging, setIsDragging] = useState(false);
+
+  const onPointerDown = useCallback((e) => {
+    // Only drag from the header bar
+    if (!panelRef.current) return;
+    e.preventDefault();
+    const rect = panelRef.current.getBoundingClientRect();
+    dragOffset.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+    setIsDragging(true);
+    panelRef.current.setPointerCapture(e.pointerId);
+  }, []);
+
+  const onPointerMove = useCallback((e) => {
+    if (!isDragging || !panelRef.current) return;
+    const rect = panelRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let newX = e.clientX - dragOffset.current.x;
+    let newY = e.clientY - dragOffset.current.y;
+    // Clamp to viewport
+    newX = Math.max(0, Math.min(newX, vw - rect.width));
+    newY = Math.max(0, Math.min(newY, vh - rect.height));
+    setPos({ x: newX, y: newY });
+  }, [isDragging]);
+
+  const onPointerUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const panelStyle = pos
+    ? { position: 'fixed', left: pos.x, top: pos.y, bottom: 'auto', right: 'auto' }
+    : {};
+
   return (
-    <div className={styles.panel} role="dialog" aria-modal="true" aria-label="Voice tutoring mode">
-      {/* ── Header ── */}
-      <div className={styles.header}>
+    <div
+      className={`${styles.panel} ${isDragging ? styles.panelDragging : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Voice tutoring mode"
+      ref={panelRef}
+      style={panelStyle}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+    >
+      {/* ── Header (drag handle) ── */}
+      <div
+        className={styles.header}
+        onPointerDown={onPointerDown}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      >
         <div className={styles.headerLeft}>
           <span className={styles.dot} />
           <span className={styles.title}>Voice Mode</span>
