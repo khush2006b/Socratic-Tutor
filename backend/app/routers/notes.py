@@ -46,11 +46,11 @@ async def _fetch_notes(
 
 @router.get("/me", response_model=NotesResponse)
 async def get_my_notes(
-    category: Optional[str] = Query(default=None, description="Filter: mistake|technique|insight|pattern"),
+    category: Optional[str] = Query(default=None, description="Filter: mistake|technique|insight|pattern|process"),
     auth:     AuthUser = Depends(get_current_user_full),
 ):
     """Return all notes for the authenticated student, optionally filtered by category."""
-    if category and category not in ("mistake", "technique", "insight", "pattern"):
+    if category and category not in ("mistake", "technique", "insight", "pattern", "process"):
         category = None
     notes = await _fetch_notes(auth.id, category=category)
     return NotesResponse(

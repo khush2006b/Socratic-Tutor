@@ -23,6 +23,7 @@ from ..services.session_manager import (
 )
 from ..services.note_generator import generate_session_notes
 from ..services.profile_aggregator import rebuild_student_profile, log_solved_problem
+from ..services.reflection_evaluator import evaluate_reflection_quality
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -117,6 +118,18 @@ async def save_session_reflection(
     background_tasks.add_task(
         rebuild_student_profile,
         student_id = student_id,
+    )
+
+    # Evaluate reflection quality (surface / structural / transferable)
+    background_tasks.add_task(
+        evaluate_reflection_quality,
+        session_id      = session_id,
+        student_id      = student_id,
+        problem_title   = reflection.problem_title,
+        problem_data    = reflection.problem_data,
+        answers         = reflection.answers,
+        hints_used      = reflection.hints_used,
+        elapsed_seconds = reflection.elapsed_seconds,
     )
 
     return SessionSummary(
