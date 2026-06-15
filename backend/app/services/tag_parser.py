@@ -50,8 +50,8 @@ VALID_VIZ_TYPES = {
 }
 VALID_CALIBRATION_TYPES = {
     "reasoning_strong", "reasoning_weak", "transfer_shown",
-    "self_corrected", "frustration_detected", "confusion_detected",
-    "edge_case_awareness", "misconception_persistent",
+    "self_corrected", "frustration_detected", "disagreement_detected",
+    "confusion_detected", "edge_case_awareness", "misconception_persistent",
 }
 
 

@@ -16,6 +16,7 @@ import useSessionStore from '../store/sessionStore';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { streamTutorResponse } from '../api/tutor';
 import TypingIndicator from './TypingIndicator';
+import VisualizationPanel from './VisualizationPanel';
 import styles from './TutorChat.module.css';
 
 
@@ -215,6 +216,9 @@ export default function TutorChat() {
             </div>
           </div>
         )}
+
+        {/* 📊 Algorithm Visualization (triggered by [TRIGGER_VISUALIZATION] tags) */}
+        <VisualizationPanel />
 
         {messages.length === 0 && phase === 'idle' && (
           <div className={`${styles.emptyState} animate-fade-in`}>
