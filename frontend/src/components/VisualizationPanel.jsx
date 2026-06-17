@@ -20,20 +20,20 @@ import styles from './VisualizationPanel.module.css';
 
 /* ── Color palette ──────────────────────────────────────────────── */
 const COLORS = {
-  bg:         '#0f1117',
-  grid:       '#1a1d2e',
-  cell:       '#23273a',
-  cellActive: '#6c63ff',
-  cellVisited:'#2d8cf0',
-  cellCurrent:'#f5a623',
-  pointer:    '#ff6b6b',
-  pointerR:   '#51cf66',
-  text:       '#e1e4ed',
+  bg:         '#05060b',
+  grid:       '#161a2e',
+  cell:       '#1f243d',
+  cellActive: '#8b5cf6',
+  cellVisited:'#06b6d4',
+  cellCurrent:'#f59e0b',
+  pointer:    '#f43f5e',
+  pointerR:   '#10b981',
+  text:       '#f3f4f6',
   textDim:    '#6b7280',
-  window:     'rgba(108, 99, 255, 0.15)',
-  windowBorder:'#6c63ff',
-  edge:       '#3a3f55',
-  edgeActive: '#6c63ff',
+  window:     'rgba(139, 92, 246, 0.16)',
+  windowBorder:'#8b5cf6',
+  edge:       '#2b314d',
+  edgeActive: '#8b5cf6',
 };
 
 const CELL_SIZE = 44;
