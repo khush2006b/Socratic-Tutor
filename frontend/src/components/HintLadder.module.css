@@ -1,10 +1,11 @@
 .wrapper {
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--color-border-subtle);
-  background: var(--color-bg-surface);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 12, 22, 0.65);
+  backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
   flex-shrink: 0;
 }
 
@@ -12,57 +13,73 @@
 .levels {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .level {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   flex: 1;
   transition: opacity var(--duration-normal) var(--ease-standard);
+  background: rgba(255, 255, 255, 0.01);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .levelDot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: var(--color-border);
+  background: rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
-  transition:
-    background var(--duration-normal) var(--ease-standard),
-    box-shadow var(--duration-normal) var(--ease-standard);
+  transition: all var(--duration-normal) var(--ease-standard);
 }
 
 .levelUsed .levelDot {
   background: var(--level-color, var(--color-accent));
+  box-shadow: 0 0 8px var(--level-color, var(--color-accent));
+}
+
+.levelCurrent {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .levelCurrent .levelDot {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--level-color, var(--color-accent)) 25%, transparent);
+  box-shadow: 0 0 12px 2px var(--level-color, var(--color-accent));
+  transform: scale(1.1);
 }
 
 .levelLabel {
   font-size: 10px;
+  font-weight: var(--weight-bold);
   color: var(--color-text-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   transition: color var(--duration-normal) var(--ease-standard);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .levelUsed .levelLabel {
   color: var(--level-color, var(--color-accent));
 }
 
+.levelCurrent .levelLabel {
+  color: #fff;
+}
+
 /* ── Request button ───────────────────────────────────────────── */
 .hintButton {
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  color: var(--color-accent);
-  background: var(--color-accent-muted);
-  border: 1px solid rgba(108, 99, 255, 0.25);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  color: var(--color-accent-hover);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.35);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
@@ -70,28 +87,32 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  transition:
-    background var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard),
-    opacity var(--duration-fast) var(--ease-standard);
+  transition: all var(--duration-fast) var(--ease-standard);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);
 }
 
 .hintButton:hover:not(:disabled) {
-  background: rgba(108, 99, 255, 0.22);
+  background: rgba(139, 92, 246, 0.2);
   border-color: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.25);
+  transform: translateY(-1px);
 }
 
 .hintButton:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btnSpinner {
   display: block;
   width: 12px;
   height: 12px;
-  border: 2px solid rgba(108, 99, 255, 0.3);
-  border-top-color: var(--color-accent);
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  border-top-color: var(--color-accent-hover);
   border-radius: 50%;
 }
 
