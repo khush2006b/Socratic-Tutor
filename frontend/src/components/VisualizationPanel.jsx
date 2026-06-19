@@ -658,5 +658,3 @@ export default function VisualizationPanel() {
     </div>
   );
 }
-
-export { VIZ_COMPONENTS };

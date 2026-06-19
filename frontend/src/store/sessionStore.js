@@ -50,7 +50,6 @@ const initialState = {
   /* ── Editor ──────────────────────────────────────────────── */
   code: '',
   language: 'python',
-  lastCodeSnapshot: '',
 
   /* ── AI tags ──────────────────────────────────────────────── */
   vizTriggers:       [],    // [{type, timestamp}]
@@ -74,7 +73,6 @@ const initialState = {
 
   /* ── Reflection ──────────────────────────────────────────── */
   isReflectionOpen: false,
-  reflectionData: null,
 
   /* ── Inferred signals (probabilistic, not authoritative) ─── */
   signals: {
@@ -124,7 +122,6 @@ const useSessionStore = create((set, get) => ({
   /* ── Session ID (returned by backend) ────────────────────── */
 
   setSessionId:  (sessionId)  => set({ sessionId }),
-  setStudentId:  (studentId)  => set({ studentId }),
 
   /* ── Editor actions ───────────────────────────────────────── */
 
@@ -134,8 +131,6 @@ const useSessionStore = create((set, get) => ({
   },
 
   setLanguage: (language) => set({ language }),
-
-  snapshotCode: () => set((s) => ({ lastCodeSnapshot: s.code })),
 
   /* ── Chat actions ─────────────────────────────────────────── */
 
@@ -240,8 +235,6 @@ const useSessionStore = create((set, get) => ({
 
   /* ── Session phase actions ────────────────────────────────── */
 
-  setPhase: (phase) => set({ phase }),
-
   tickTimer: () => set((s) => ({ elapsedSeconds: s.elapsedSeconds + 1 })),
 
   /* ── Voice signal ─────────────────────────────────────────── */
@@ -255,10 +248,8 @@ const useSessionStore = create((set, get) => ({
 
   closeReflection: () => set({ isReflectionOpen: false }),
 
-  setReflectionData: (data) => set({ reflectionData: data }),
-
   completeSession: (data) =>
-    set({ reflectionData: data, phase: 'complete', isReflectionOpen: false }),
+    set({ phase: 'complete', isReflectionOpen: false }),
 }));
 
 // ── Keep studentId in sync with auth state ────────────────────────
@@ -272,5 +263,5 @@ useAuthStore.subscribe((authState) => {
   }
 });
 
-export { HINT_LEVELS, HINT_LABELS };
+
 export default useSessionStore;
