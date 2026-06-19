@@ -4,7 +4,7 @@ Application settings loaded from environment variables.
 Uses pydantic-settings for type-safe config with validation.
 """
 
-from typing import Optional
+from typing import Optional #this is needed for the optional Supabase settings mentioned in the code. It allows us to specify that certain settings can be None if not provided. for 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from functools import lru_cache
@@ -18,18 +18,18 @@ class Settings(BaseSettings):
     )
 
     # Gemini
-    gemini_api_key: str = Field(..., description="Google Gemini API key")
+    gemini_api_key: str = Field(..., description="Google Gemini API key") 
     gemini_model: str = Field(
         default="gemini-2.5-flash",
         description="Gemini model name",
     )
 
     # Supabase (optional — app works without it, falls back to in-memory)
-    supabase_url: Optional[str] = Field(default=None, description="Supabase project URL")
+    supabase_url: Optional[str] = Field(default=None, description="Supabase project URL") # This is the URL of your Supabase project, which is needed to connect to the database. If not provided, the app will use an in-memory store instead. why it store is in-memory? Because without a database connection, the app needs to keep data in memory while it's running. This means that any data will be lost when the app restarts, but it allows the app to function without a database.
     supabase_key: Optional[str] = Field(default=None, description="Supabase anon/service key")
-    supabase_jwt_secret: Optional[str] = Field(default=None, description="Supabase JWT secret for token verification")
+    supabase_jwt_secret: Optional[str] = Field(default=None, description="Supabase JWT secret for token verification") #
 
-    @property
+    @property # 
     def db_enabled(self) -> bool:
         return bool(self.supabase_url and self.supabase_key)
 

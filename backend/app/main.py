@@ -1,10 +1,5 @@
-"""
-main.py
-FastAPI application factory — registers middleware, routers, and lifecycle hooks.
-"""
-
-import logging
-from contextlib import asynccontextmanager
+import logging 
+from contextlib import asynccontextmanager  # this is used for the lifespan context manager means th
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,7 +38,7 @@ async def lifespan(app: FastAPI):
         logger.error("Failed to initialise Gemini client: %s", exc)
         logger.error("Check that GEMINI_API_KEY is set in backend/.env")
 
-    yield
+    yield 
 
     logger.info("SocraticDS backend shutting down")
 
