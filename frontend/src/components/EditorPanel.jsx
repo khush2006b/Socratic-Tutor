@@ -136,7 +136,6 @@ export default function EditorPanel() {
   const phase        = useSessionStore((s) => s.phase);
   const setCode      = useSessionStore((s) => s.setCode);
   const setLanguage  = useSessionStore((s) => s.setLanguage);
-  const snapshotCode = useSessionStore((s) => s.snapshotCode);
 
   const [stdout, setStdout]       = useState('');
   const [stderr, setStderr]       = useState('');
@@ -147,7 +146,6 @@ export default function EditorPanel() {
   const [showIO, setShowIO]       = useState(false);
 
   const editorRef   = useRef(null);
-  const debounceRef = useRef(null);
 
   /* Sync starter code when problem or language changes */
   useEffect(() => {
@@ -168,11 +166,7 @@ export default function EditorPanel() {
 
   const handleCodeChange = useCallback((value = '') => {
     setCode(value);
-
-    /* Debounced snapshot for diff tracking */
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(snapshotCode, 2000);
-  }, [setCode, snapshotCode]);
+  }, [setCode]);
 
   const handleLanguageChange = useCallback((e) => {
     setLanguage(e.target.value);

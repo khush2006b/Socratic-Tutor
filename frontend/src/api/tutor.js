@@ -194,5 +194,3 @@ export async function submitReflection(data) {
   });
 }
 
-/* Re-export REFLECTION_PROMPTS so ReflectionModal import still works */
-export { REFLECTION_PROMPTS } from './mockData.js';
