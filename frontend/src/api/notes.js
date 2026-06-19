@@ -11,8 +11,3 @@ export async function fetchNotes(category = null) {
   return res.json();
 }
 
-/** Fetch notes for a specific session */
-export async function fetchSessionNotes(sessionId) {
-  const res = await apiFetch(`/api/notes/session/${sessionId}`);
-  return res.json();
-}
