@@ -175,16 +175,6 @@ _PROBLEMS_RAW: list[dict] = [
     },
 ]
 
-# ── Slug → id mapping for URL parsing ─────────────────────────────
-
-_SLUG_MAP: dict[str, int] = {
-    "two-sum": 1,
-    "longest-substring-without-repeating-characters": 3,
-    "best-time-to-buy-and-sell-stock": 121,
-    "valid-parentheses": 20,
-    "reverse-linked-list": 206,
-}
-
 # ── Build lookup by id ─────────────────────────────────────────────
 
 _PROBLEMS_BY_ID: dict[int, Problem] = {
@@ -195,11 +185,6 @@ _PROBLEMS_BY_ID: dict[int, Problem] = {
 
 def get_problem_by_id(problem_id: int) -> Problem | None:
     return _PROBLEMS_BY_ID.get(problem_id)
-
-
-def get_problem_by_slug(slug: str) -> Problem | None:
-    pid = _SLUG_MAP.get(slug)
-    return get_problem_by_id(pid) if pid else None
 
 
 def search_problems_by_title(query: str) -> Problem | None:

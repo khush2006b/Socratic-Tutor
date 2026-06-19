@@ -11,10 +11,10 @@ import json
 import base64
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass # da
 from typing import Optional
 
-import httpx
+import httpx # ht
 from fastapi import HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Depends, Request
@@ -22,7 +22,7 @@ from jose import jwt, JWTError
 
 from ..config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__) # get logger refers
 _bearer = HTTPBearer(auto_error=False)
 
 # JWKS cache — refreshed at most once per hour
@@ -40,7 +40,7 @@ class AuthUser:
 
 # ── Token header inspection ───────────────────────────────────────
 
-def _get_token_alg(token: str) -> str:
+def _get_token_alg(token: str) -> str: # 
     """Read the 'alg' field from JWT header without verification."""
     try:
         header_b64 = token.split(".")[0]
