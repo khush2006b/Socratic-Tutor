@@ -5,15 +5,7 @@ Session and signal tracking models.
 
 from pydantic import BaseModel, Field
 from typing import Optional
-from enum import Enum
 
-
-class SessionPhase(str, Enum):
-    idle       = "idle"
-    solving    = "solving"
-    stuck      = "stuck"
-    reflecting = "reflecting"
-    complete   = "complete"
 
 
 class ObservableSignals(BaseModel):
@@ -43,23 +35,6 @@ class ReflectionSubmission(BaseModel):
     hints_used:      int                 = 0
     elapsed_seconds: int                 = 0
     timestamp:       str                 = ""
-
-
-class SessionCreate(BaseModel):
-    """Payload to create a new session in the DB."""
-    student_id: str
-    problem_id: Optional[int] = None
-    problem_title: Optional[str] = None
-    language: str = "python"
-
-
-class SessionUpdate(BaseModel):
-    """Partial update fields for a session."""
-    phase: Optional[str] = None
-    hints_used: Optional[int] = None
-    code_edits: Optional[int] = None
-    elapsed_seconds: Optional[int] = None
-    ended_at: Optional[str] = None
 
 
 class SessionSummary(BaseModel):
