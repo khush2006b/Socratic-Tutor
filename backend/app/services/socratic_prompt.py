@@ -155,7 +155,7 @@ Emit these only when clearly warranted. Tags go at the END of your response.
 
 - `[MISCONCEPTION: <specific description>]`
 - `[MASTERY: <pattern> → <level>]`   levels: recognition | application | generalisation
-- `[TRIGGER_VISUALIZATION: <type>]`  types: sliding_window | two_pointers | bfs | dfs | stack | recursion
+- `[TRIGGER_VISUALIZATION: <type>]`  types: sliding_window | two_pointers | bfs | dfs | stack | recursion | trie
   **This tag triggers an animated visualization in the student's UI.**
   Emit it in these situations:
   1. When you FIRST explain how a pattern works (e.g. "the window slides right..." → emit `[TRIGGER_VISUALIZATION: sliding_window]`)
@@ -374,10 +374,13 @@ def build_context_prompt(
     voice_mode: bool = False,
     calibration_state: CalibrationState | None = None,
     student_context: str = "",
+    grounding_json: dict | None = None,
+    student_grounding: dict | None = None,
 ) -> str:
     """
     Build the per-turn context block prepended to the conversation.
     Kept deliberately lean — every token here costs latency.
+    When grounding_json is available, it replaces the raw problem statement.
     """
     lines: list[str] = []
 
@@ -388,8 +391,13 @@ def build_context_prompt(
 
     lines.append("## Session Context\n")
 
-    # Problem
-    if problem:
+    # Problem — use grounding if available, fall back to raw statement
+    if grounding_json and problem:
+        lines.append(_format_grounding_block(problem, grounding_json))
+        # Inject student-specific grounding state
+        if student_grounding:
+            lines.append(_format_student_grounding(student_grounding))
+    elif problem:
         patterns = ", ".join(problem.patterns) if problem.patterns else "unknown"
         lines.append(f"**Problem:** {problem.title} (#{problem.leetcode_id}) — {problem.difficulty}")
         lines.append(f"**Pattern(s):** {patterns}")
@@ -540,3 +548,86 @@ def build_conversation_history(messages: list[ChatMessage]) -> list[dict]:
         role = "model" if msg.role == "tutor" else "user"
         result.append({"role": role, "parts": [{"text": msg.content}]})
     return result
+
+
+# ── Grounding formatters ──────────────────────────────────────────
+
+def _format_grounding_block(problem, grounding: dict) -> str:
+    """
+    Format the grounding JSON into a compact, authoritative prompt block.
+    This is injected on EVERY turn so the tutor never forgets problem facts.
+    """
+    lines = []
+    lines.append("## Problem Grounding (AUTHORITATIVE — never contradict this)\n")
+    lines.append(f"**Problem:** {problem.title} (#{problem.leetcode_id}) — {problem.difficulty}")
+
+    if grounding.get("objective"):
+        lines.append(f"**Objective:** {grounding['objective']}")
+
+    if grounding.get("core_concepts"):
+        lines.append(f"**Core Concepts:** {', '.join(grounding['core_concepts'])}")
+
+    if grounding.get("key_invariants"):
+        lines.append(f"**Key Invariants:**")
+        for inv in grounding["key_invariants"]:
+            lines.append(f"  • {inv}")
+
+    if grounding.get("hidden_tricks"):
+        lines.append(f"**Hidden Tricks:**")
+        for trick in grounding["hidden_tricks"]:
+            lines.append(f"  • {trick}")
+
+    if grounding.get("common_misconceptions"):
+        lines.append(f"**Common Misconceptions (watch for these):**")
+        for m in grounding["common_misconceptions"]:
+            lines.append(f"  • {m}")
+
+    if grounding.get("edge_cases"):
+        lines.append(f"**Edge Cases:** {', '.join(grounding['edge_cases'][:5])}")
+
+    if grounding.get("optimal_complexity"):
+        oc = grounding["optimal_complexity"]
+        time_c = oc.get("time", "")
+        space_c = oc.get("space", "")
+        if time_c or space_c:
+            lines.append(f"**Optimal Complexity:** Time {time_c}, Space {space_c}")
+
+    if grounding.get("prerequisite_concepts"):
+        lines.append(f"**Prerequisites:** {', '.join(grounding['prerequisite_concepts'])}")
+
+    # Still inject the raw statement for full context (the grounding is the structured overlay)
+    if problem.statement:
+        stmt = problem.statement.strip()
+        if len(stmt) > 1500:
+            stmt = stmt[:1500] + "\n... (truncated)"
+        lines.append(f"\n**Full problem statement:**\n{stmt}\n")
+
+    lines.append(
+        "**CRITICAL: Reference the grounding above for all factual claims. "
+        "Never state a condition, complexity, or invariant that contradicts the grounding.**\n"
+    )
+
+    return "\n".join(lines)
+
+
+def _format_student_grounding(student_grounding: dict) -> str:
+    """
+    Format the dynamic student-specific grounding state for prompt injection.
+    Tracks what the student has encountered/mastered during this session.
+    """
+    lines = ["## Student State (this session)\n"]
+
+    triggered = student_grounding.get("misconceptions_triggered", [])
+    if triggered:
+        lines.append(f"**Misconceptions triggered:** {', '.join(triggered)}")
+
+    mastered = student_grounding.get("mastered", [])
+    if mastered:
+        lines.append(f"**Mastered:** {', '.join(mastered)}")
+
+    confused = student_grounding.get("still_confused", [])
+    if confused:
+        lines.append(f"**Still confused about:** {', '.join(confused)}")
+
+    lines.append("")
+    return "\n".join(lines)

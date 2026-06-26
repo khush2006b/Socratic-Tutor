@@ -38,12 +38,14 @@ export async function parseProblem(input) {
  * SSE event types from backend:
  *   { type: 'chunk', content: '...' }
  *   { type: 'tags',  misconceptions, mastery, vizTriggers, waitSeconds }
+ *   { type: 'grounding', grounding: {...} }
  *   { type: 'done' }
  *   { type: 'error', message: '...' }
  *
  * Callbacks:
  *   onChunk(text)          — called for each streamed text chunk
  *   onTags(tagsEvent)      — called once when Gemini tag event arrives
+ *   onGrounding(grounding) — called when grounding data arrives
  *   onDone(sessionId)      — called when stream ends; sessionId from X-Session-Id header
  *   onError(Error)         — called on network/backend error
  *
@@ -52,7 +54,7 @@ export async function parseProblem(input) {
  * @returns {AbortController}
  */
 export function streamTutorResponse(payload, callbacks = {}) {
-  const { onChunk, onTags, onDone, onError } = callbacks;
+  const { onChunk, onTags, onGrounding, onDone, onError } = callbacks;
 
   const controller = new AbortController();
   const { signal } = controller;
@@ -114,6 +116,9 @@ export function streamTutorResponse(payload, callbacks = {}) {
                 break;
               case 'tags':
                 onTags?.(parsed);
+                break;
+              case 'grounding':
+                onGrounding?.(parsed.grounding);
                 break;
               case 'done':
                 // SSE body is the most reliable source — doesn't need CORS expose_headers
