@@ -56,6 +56,7 @@ const initialState = {
   masteryEvents:     [],    // [{pattern, level, timestamp}]
   misconceptions:    [],    // [string]
   problemSolved:     false, // true when AI emits [PROBLEM_SOLVED]
+  grounding:         null,  // structured problem knowledge from grounding engine
 
   /* ── Chat ────────────────────────────────────────────────── */
   messages: [],           // { id, role: 'tutor'|'student', content, timestamp }
@@ -102,6 +103,7 @@ const useSessionStore = create((set, get) => ({
       hintLevelIndex: -1,
       hintsUsed: [],
       vizTriggers: [],
+      grounding: null,
       signals: { ...initialState.signals },
       elapsedSeconds: 0,
       messages: [
@@ -213,6 +215,10 @@ const useSessionStore = create((set, get) => ({
   },
 
   clearVizTriggers: () => set({ vizTriggers: [] }),
+
+  /* ── Grounding actions ───────────────────────────────────── */
+
+  setGrounding: (grounding) => set({ grounding }),
 
   /* ── Hint actions ─────────────────────────────────────────── */
 
