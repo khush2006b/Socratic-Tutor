@@ -90,6 +90,7 @@ export default function TutorChat() {
   const finalizeStream   = useSessionStore((s) => s.finalizeStream);
   const handleTagEvent   = useSessionStore((s) => s.handleTagEvent);
   const setSessionId     = useSessionStore((s) => s.setSessionId);
+  const setGrounding     = useSessionStore((s) => s.setGrounding);
 
   const [inputValue, setInputValue] = useState('');
   const scrollRef    = useRef(null);
@@ -153,6 +154,18 @@ export default function TutorChat() {
       {
         onChunk:  appendChunk,
         onTags:   handleTagEvent,
+        onGrounding: (grounding) => {
+          setGrounding(grounding);
+          // Auto-trigger visualization from grounding core_concepts
+          if (grounding?.core_concepts) {
+            const VIZ_TYPES = ['sliding_window', 'two_pointers', 'bfs', 'dfs', 'stack', 'recursion', 'trie'];
+            const concepts = grounding.core_concepts.map(c => c.toLowerCase().replace(/\s+/g, '_'));
+            const match = concepts.find(c => VIZ_TYPES.includes(c));
+            if (match) {
+              handleTagEvent({ vizTriggers: [match] });
+            }
+          }
+        },
         onDone:   (returnedSessionId) => {
           finalizeStream();
           if (returnedSessionId && returnedSessionId !== sessionId) {
@@ -171,7 +184,7 @@ export default function TutorChat() {
     isStreaming, problem, code, language, messages, signals,
     hintLevelIndex, studentId, sessionId,
     addMessage, startStreaming, appendChunk, finalizeStream,
-    handleTagEvent, setSessionId,
+    handleTagEvent, setSessionId, setGrounding,
   ]);
 
   const handleSubmit = useCallback((e) => {

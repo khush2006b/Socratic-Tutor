@@ -12,6 +12,7 @@
  *   - dfs:            depth-first graph traversal with backtracking
  *   - stack:          push/pop stack operations
  *   - recursion:      recursion tree branching
+ *   - trie:           binary trie insertion (bit-by-bit)
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -620,6 +621,188 @@ function RecursionViz() {
   );
 }
 
+/* ── Trie (Binary) Visualization ────────────────────────────────── */
+
+function TrieViz() {
+  const canvasRef = useRef(null);
+  const [step, setStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+
+  // Insert numbers bit-by-bit into a binary trie (3-bit for clarity)
+  // Numbers: 5 (101), 3 (011), 6 (110)
+  const BITS = 3;
+  const numbers = [
+    { val: 5, bits: [1, 0, 1], label: '5' },
+    { val: 3, bits: [0, 1, 1], label: '3' },
+    { val: 6, bits: [1, 1, 0], label: '6' },
+  ];
+
+  // Pre-compute all trie nodes at each step of insertion
+  // Each step inserts one bit of one number
+  const totalSteps = numbers.length * BITS;
+
+  // Build trie node positions (binary tree layout)
+  // Depth 0: root at center top
+  // Depth 1: 0-child left, 1-child right
+  // etc.
+  const W = 360, H = 200;
+  const nodeR = 14;
+
+  function getNodePos(depth, path) {
+    // path is array of 0/1 representing left/right from root
+    const levelY = 20 + depth * 46;
+    const spread = (W * 0.42) / Math.pow(2, depth);
+    let x = W / 2;
+    for (let i = 0; i < path.length; i++) {
+      x += path[i] === 1 ? spread / Math.pow(2, i) : -spread / Math.pow(2, i);
+    }
+    return { x, y: levelY };
+  }
+
+  // Build insertion order: which nodes exist at each step
+  function buildTrieSteps() {
+    const steps = [{ nodes: [{ path: [], depth: 0, label: 'R' }], edges: [], insertingNum: null, insertingBit: -1 }];
+    const existingPaths = new Set(['']);
+
+    for (let ni = 0; ni < numbers.length; ni++) {
+      const num = numbers[ni];
+      for (let bi = 0; bi < BITS; bi++) {
+        const path = num.bits.slice(0, bi + 1);
+        const pathKey = path.join('');
+        const nodes = [...steps[steps.length - 1].nodes];
+        const edges = [...steps[steps.length - 1].edges];
+
+        if (!existingPaths.has(pathKey)) {
+          existingPaths.add(pathKey);
+          nodes.push({
+            path: [...path],
+            depth: bi + 1,
+            label: String(num.bits[bi]),
+          });
+          edges.push({
+            from: path.slice(0, bi).join('') || '',
+            to: pathKey,
+            bit: num.bits[bi],
+          });
+        }
+
+        steps.push({
+          nodes,
+          edges,
+          insertingNum: num.label,
+          insertingBit: bi,
+          currentPath: pathKey,
+        });
+      }
+    }
+    return steps;
+  }
+
+  const trieSteps = useRef(buildTrieSteps()).current;
+  const maxStep = trieSteps.length - 1;
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const timer = setInterval(() => {
+      setStep(s => {
+        if (s >= maxStep) { setIsPlaying(false); return maxStep; }
+        return s + 1;
+      });
+    }, ANIM_SPEED);
+    return () => clearInterval(timer);
+  }, [isPlaying, maxStep]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const frame = trieSteps[step];
+
+    // Draw edges
+    frame.edges.forEach(e => {
+      const fromNode = frame.nodes.find(n => n.path.join('') === e.from);
+      const toNode = frame.nodes.find(n => n.path.join('') === e.to);
+      if (!fromNode || !toNode) return;
+
+      const fromPos = getNodePos(fromNode.depth, fromNode.path);
+      const toPos = getNodePos(toNode.depth, toNode.path);
+      const isCurrent = e.to === frame.currentPath;
+
+      ctx.strokeStyle = isCurrent ? COLORS.edgeActive : COLORS.edge;
+      ctx.lineWidth = isCurrent ? 2.5 : 1.5;
+      ctx.beginPath();
+      ctx.moveTo(fromPos.x, fromPos.y + nodeR);
+      ctx.lineTo(toPos.x, toPos.y - nodeR);
+      ctx.stroke();
+
+      // Edge label (0 or 1)
+      const mx = (fromPos.x + toPos.x) / 2 + (e.bit === 0 ? -10 : 10);
+      const my = (fromPos.y + toPos.y) / 2;
+      ctx.fillStyle = isCurrent ? COLORS.cellActive : COLORS.textDim;
+      ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(e.bit), mx, my);
+    });
+
+    // Draw nodes
+    frame.nodes.forEach(n => {
+      const pos = getNodePos(n.depth, n.path);
+      const isCurrent = n.path.join('') === frame.currentPath;
+      const isRoot = n.depth === 0;
+
+      ctx.fillStyle = isCurrent ? COLORS.cellCurrent : isRoot ? COLORS.cellActive : COLORS.cell;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, nodeR, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (isCurrent) {
+        ctx.strokeStyle = COLORS.cellCurrent;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, nodeR + 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#fff';
+      ctx.font = isRoot ? 'bold 11px Inter, system-ui, sans-serif' : 'bold 12px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(n.label, pos.x, pos.y);
+    });
+
+    // Info label
+    if (frame.insertingNum !== null) {
+      ctx.fillStyle = COLORS.cellActive;
+      ctx.font = 'bold 12px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Inserting ${frame.insertingNum} — bit ${frame.insertingBit + 1}/${BITS}`, W / 2, H - 10);
+    } else {
+      ctx.fillStyle = COLORS.textDim;
+      ctx.font = '12px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Binary Trie — root', W / 2, H - 10);
+    }
+  }, [step]);
+
+  return (
+    <div className={styles.vizContainer}>
+      <div className={styles.vizHeader}>
+        <span className={styles.vizIcon}>⊟</span>
+        <span className={styles.vizTitle}>Binary Trie — inserting [5, 3, 6]</span>
+        <div className={styles.controls}>
+          <button className={styles.controlBtn} onClick={() => { setStep(0); setIsPlaying(true); }}>↺</button>
+          <button className={styles.controlBtn} onClick={() => setIsPlaying(!isPlaying)}>
+            {isPlaying ? '⏸' : '▶'}
+          </button>
+        </div>
+      </div>
+      <canvas ref={canvasRef} width={W} height={H} className={styles.canvas} />
+    </div>
+  );
+}
+
 /* ── Type → Component map ───────────────────────────────────────── */
 
 const VIZ_COMPONENTS = {
@@ -629,6 +812,7 @@ const VIZ_COMPONENTS = {
   dfs:            (props) => <GraphViz type="dfs" {...props} />,
   stack:          StackViz,
   recursion:      RecursionViz,
+  trie:           TrieViz,
 };
 
 /* ── Main export ────────────────────────────────────────────────── */
