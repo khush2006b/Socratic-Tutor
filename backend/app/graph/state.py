@@ -25,6 +25,9 @@ class TutorState(TypedDict):
     full_response: str                # complete Gemini response text
     parsed_tags: dict                 # { misconceptions, mastery_events, visualizations }
     calibration_state: dict           # CalibrationState serialized as dict
+    grounding_json: dict              # structured problem knowledge (authoritative)
+    student_grounding: dict           # per-session student state vs grounding
+    drift_warnings: list              # grounding conflicts detected in tutor response
     error: Optional[str]
 
 
