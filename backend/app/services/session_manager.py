@@ -137,6 +137,88 @@ async def mark_problem_solved(session_id: str, student_id: str) -> None:
         logger.warning("mark_problem_solved profile update failed: %s", exc)
 
 
+# ── Grounding operations ──────────────────────────────────────────
+
+async def save_grounding(session_id: str, grounding_json: dict) -> None:
+    """Persist the extracted problem grounding JSON to the session."""
+    import json as _json
+    db = get_db()
+    if db:
+        try:
+            await asyncio.to_thread(
+                lambda: db.table("sessions")
+                    .update({"grounding_json": grounding_json})
+                    .eq("id", session_id)
+                    .execute()
+            )
+            logger.debug("Grounding saved for session %s", session_id)
+            return
+        except Exception as exc:
+            logger.warning("DB grounding save failed: %s", exc)
+
+    if session_id in _sessions:
+        _sessions[session_id]["grounding_json"] = grounding_json
+
+
+async def load_grounding(session_id: str) -> dict | None:
+    """Load the problem grounding JSON from the session."""
+    db = get_db()
+    if db:
+        try:
+            result = await asyncio.to_thread(
+                lambda: db.table("sessions")
+                    .select("grounding_json")
+                    .eq("id", session_id)
+                    .single()
+                    .execute()
+            )
+            return (result.data or {}).get("grounding_json")
+        except Exception as exc:
+            logger.warning("DB grounding load failed: %s", exc)
+
+    session = _sessions.get(session_id, {})
+    return session.get("grounding_json")
+
+
+async def update_student_grounding(session_id: str, student_grounding: dict) -> None:
+    """Update the dynamic student-specific grounding state for a session."""
+    db = get_db()
+    if db:
+        try:
+            await asyncio.to_thread(
+                lambda: db.table("sessions")
+                    .update({"student_grounding": student_grounding})
+                    .eq("id", session_id)
+                    .execute()
+            )
+            return
+        except Exception as exc:
+            logger.warning("DB student_grounding update failed: %s", exc)
+
+    if session_id in _sessions:
+        _sessions[session_id]["student_grounding"] = student_grounding
+
+
+async def load_student_grounding(session_id: str) -> dict:
+    """Load the student-specific grounding state from the session."""
+    db = get_db()
+    if db:
+        try:
+            result = await asyncio.to_thread(
+                lambda: db.table("sessions")
+                    .select("student_grounding")
+                    .eq("id", session_id)
+                    .single()
+                    .execute()
+            )
+            return (result.data or {}).get("student_grounding") or {}
+        except Exception as exc:
+            logger.warning("DB student_grounding load failed: %s", exc)
+
+    session = _sessions.get(session_id, {})
+    return session.get("student_grounding", {})
+
+
 # ── Message operations ─────────────────────────────────────────────
 
 async def save_message(session_id: str, role: str, content: str) -> None:
