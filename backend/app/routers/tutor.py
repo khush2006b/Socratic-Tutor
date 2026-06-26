@@ -29,7 +29,10 @@ from ..services.session_manager import (
     upsert_student_profile,
     mark_problem_solved,
     save_message,
+    save_grounding,
+    load_grounding,
 )
+from ..services.grounding import extract_grounding
 from ..graph.tutor_graph import tutor_graph
 
 logger = logging.getLogger(__name__)
@@ -63,6 +66,7 @@ async def tutor_stream(
 
     # ── Create session on first message ───────────────────────────
     session_id = request.session_id
+    grounding_json = {}
 
     if not session_id and request.problem:
         session_id = await create_session(
@@ -80,6 +84,28 @@ async def tutor_stream(
             problem_id    = request.problem.id if request.problem else None,
             problem_title = request.problem.title if request.problem else None,
         )
+
+        # ── Extract problem grounding (first message only) ────────
+        if request.problem:
+            try:
+                grounding_json = await extract_grounding(request.problem)
+                await save_grounding(session_id, grounding_json)
+                logger.info(
+                    "Problem grounding extracted for '%s': %d concepts",
+                    request.problem.title,
+                    len(grounding_json.get("core_concepts", [])),
+                )
+            except Exception as exc:
+                logger.warning("Grounding extraction failed: %s", exc)
+                grounding_json = {}
+    else:
+        # Load existing grounding for continuing sessions
+        if session_id:
+            try:
+                grounding_json = await load_grounding(session_id) or {}
+            except Exception as exc:
+                logger.debug("Grounding load failed: %s", exc)
+                grounding_json = {}
 
     # ── Persist student message in background ──────────────────────
     if session_id and request.messages:
@@ -107,6 +133,10 @@ async def tutor_stream(
         "hint_level_index": request.hint_level_index,
         "signals":          request.signals.model_dump(by_alias=False),
         "voice_mode":       request.voice_mode,
+        # Grounding (injected into every prompt)
+        "grounding_json":   grounding_json,
+        "student_grounding": {},
+        "drift_warnings":   [],
         # Output fields (populated by graph nodes)
         "student_context":  "",
         "context_prompt":   "",
@@ -186,6 +216,18 @@ async def tutor_stream(
             err = final_output.get("error")
             if err:
                 yield _sse({"type": "error", "message": err})
+
+            # Log drift warnings (v1: observability only)
+            drift = final_output.get("drift_warnings", [])
+            if drift:
+                logger.warning("Grounding drift warnings: %s", drift)
+
+        # Send grounding to frontend (first message or whenever available)
+        if grounding_json:
+            yield _sse({
+                "type": "grounding",
+                "grounding": grounding_json,
+            })
 
         yield _sse({"type": "done", "sessionId": session_id or ""})
 
