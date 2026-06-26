@@ -178,7 +178,7 @@ _PROBLEMS_RAW: list[dict] = [
 # ── Build lookup by id ─────────────────────────────────────────────
 
 _PROBLEMS_BY_ID: dict[int, Problem] = {
-    raw["id"]: Problem(**raw)
+    raw["id"]: Problem(**raw) 
     for raw in _PROBLEMS_RAW
 }
 

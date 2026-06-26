@@ -16,9 +16,13 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from ..config import get_settings
 from ..services.socratic_prompt import SYSTEM_PROMPT, build_context_prompt
 from ..services.tag_parser import parse_tags, ParsedTags, strip_voice_tags
-from ..services.session_manager import save_message, persist_tags, load_calibration_state, save_calibration_state
+from ..services.session_manager import (
+    save_message, persist_tags, load_calibration_state, save_calibration_state,
+    load_grounding, load_student_grounding, update_student_grounding,
+)
 from ..services.student_context import build_student_context
 from ..services.calibration import CalibrationState
+from ..services.grounding import check_drift, build_student_grounding
 from .state import TutorState, HintState
 
 logger = logging.getLogger(__name__)
@@ -192,6 +196,21 @@ async def build_context(state: TutorState) -> dict:
             logger.warning("Failed to build student context: %s", exc)
             student_ctx = ""
 
+    # Load problem grounding (structured knowledge)
+    grounding = state.get("grounding_json") or {}
+    student_gnd = state.get("student_grounding") or {}
+    if not grounding and state.get("session_id"):
+        try:
+            grounding = await load_grounding(state["session_id"]) or {}
+        except Exception as exc:
+            logger.warning("Failed to load grounding: %s", exc)
+            grounding = {}
+    if not student_gnd and state.get("session_id"):
+        try:
+            student_gnd = await load_student_grounding(state["session_id"])
+        except Exception as exc:
+            student_gnd = {}
+
     context = build_context_prompt(
         problem=problem,
         code=state.get("code", ""),
@@ -202,6 +221,8 @@ async def build_context(state: TutorState) -> dict:
         voice_mode=state.get("voice_mode", False),
         calibration_state=calibration,
         student_context=student_ctx,
+        grounding_json=grounding if grounding else None,
+        student_grounding=student_gnd if student_gnd else None,
     )
 
     # Detect if tutor is looping (same question 3+ times)
@@ -213,8 +234,8 @@ async def build_context(state: TutorState) -> dict:
     lc_messages = _build_lc_messages(raw_messages, context, force_direct_answer=looping)
 
     logger.info(
-        "build_context: %d messages, %d LangChain msgs, looping=%s",
-        len(raw_messages), len(lc_messages), looping,
+        "build_context: %d messages, %d LangChain msgs, grounding=%s, looping=%s",
+        len(raw_messages), len(lc_messages), bool(grounding), looping,
     )
 
     return {
@@ -222,6 +243,8 @@ async def build_context(state: TutorState) -> dict:
         "context_prompt": context,
         "lc_messages": lc_messages,
         "calibration_state": calibration.to_dict(),
+        "grounding_json": grounding,
+        "student_grounding": student_gnd,
     }
 
 
@@ -310,11 +333,39 @@ async def parse_tags_node(state: TutorState) -> dict:
     }
 
 
-# ── Node 4: persist_data ──────────────────────────────────────────
+
+# ── Node 4: check_grounding_drift ─────────────────────────────────
+
+async def check_grounding_drift(state: TutorState) -> dict:
+    """
+    Compare the tutor's response against the grounded problem facts.
+    Logs any contradictions for observability. In v1 this is advisory only —
+    future versions can use drift_warnings to trigger regeneration.
+    """
+    full_response = state.get("full_response", "")
+    grounding = state.get("grounding_json") or {}
+
+    if not grounding or not full_response:
+        return {"drift_warnings": []}
+
+    try:
+        warnings = await check_drift(full_response, grounding)
+        if warnings:
+            logger.warning(
+                "GROUNDING DRIFT in session %s: %s",
+                state.get("session_id", "?"), warnings,
+            )
+        return {"drift_warnings": warnings}
+    except Exception as exc:
+        logger.debug("Drift check skipped: %s", exc)
+        return {"drift_warnings": []}
+
+
+# ── Node 5: persist_data ──────────────────────────────────────────
 
 async def persist_data(state: TutorState) -> dict:
     """
-    Persist tutor message and any extracted tags to Supabase.
+    Persist tutor message, extracted tags, and student grounding to Supabase.
     Always returns {} — failures are logged but never crash the graph.
     """
     session_id    = state.get("session_id")
@@ -356,6 +407,23 @@ async def persist_data(state: TutorState) -> dict:
             await save_calibration_state(session_id, cal_dict)
         except Exception as exc:
             logger.warning("Failed to save calibration state: %s", exc)
+
+    # Update dynamic student grounding (misconceptions triggered, mastery)
+    try:
+        existing_sg = state.get("student_grounding") or {}
+        misconceptions = tags_data.get("misconceptions", [])
+        mastery_events = tags_data.get("mastery_events", [])
+
+        if misconceptions or mastery_events:
+            updated_sg = build_student_grounding(existing_sg, misconceptions, mastery_events)
+            await update_student_grounding(session_id, updated_sg)
+            logger.debug(
+                "Student grounding updated: %d misconceptions, %d mastery",
+                len(updated_sg.get("misconceptions_triggered", [])),
+                len(updated_sg.get("mastered", [])),
+            )
+    except Exception as exc:
+        logger.warning("Failed to update student grounding: %s", exc)
 
     return {}
 
