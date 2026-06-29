@@ -30,6 +30,7 @@ import ReflectionModal from './components/ReflectionModal';
 import VoiceMode       from './components/VoiceMode';
 import AuthPage        from './pages/AuthPage';
 import NotesPage       from './pages/NotesPage';
+import DashboardPage   from './pages/DashboardPage';
 
 import styles from './App.module.css';
 
@@ -136,7 +137,7 @@ export default function App() {
   const user      = useAuthStore(s => s.user);
 
   const [isProblemCollapsed, setIsProblemCollapsed] = useState(false);
-  const [currentView, setCurrentView]               = useState('tutor'); // 'tutor' | 'notes'
+  const [currentView, setCurrentView]               = useState('dashboard'); // 'dashboard' | 'tutor' | 'notes'
   const [isVoiceOpen, setIsVoiceOpen]               = useState(false);
   const hSplit = usePanelSplit();
   const vSplit = useVerticalSplit();
@@ -197,96 +198,103 @@ export default function App() {
         onToggleVoice={toggleVoiceMode}
       />
 
-      {/* ── Notes page ── */}
-      {currentView === 'notes' && <NotesPage />}
-
-      {/* ── Main tutoring workspace ── */}
-      {currentView === 'tutor' && (
-        <main
-          className={styles.main}
-          ref={hSplit.containerRef}
-          aria-label="Main tutoring workspace"
-        >
-        {/* Left panel — problem + editor, vertically split */}
-        <div
-          className={styles.leftPanel}
-          ref={vSplit.containerRef}
-          style={{
-            width: isProblemCollapsed ? '36px' : `${hSplit.splitPct}%`,
-            minWidth: isProblemCollapsed ? '36px' : undefined,
-          }}
-        >
-          {/* Problem panel — upper portion */}
-          <div
-            className={styles.problemSection}
-            style={{ height: isProblemCollapsed ? '100%' : `${vSplit.splitPct}%` }}
-          >
-            <ProblemPanel
-              isCollapsed={isProblemCollapsed}
-              onToggleCollapse={toggleProblem}
-            />
-          </div>
-
-          {/* Vertical drag handle */}
-          {!isProblemCollapsed && (
-            <div
-              className={styles.vDragHandle}
-              onMouseDown={vSplit.startDrag}
-              onTouchStart={vSplit.startDrag}
-              role="separator"
-              aria-orientation="horizontal"
-              aria-label="Resize problem/editor split"
-              tabIndex={0}
-            />
-          )}
-
-          {/* Editor panel — lower portion */}
-          {!isProblemCollapsed && (
-            <div
-              className={styles.editorSection}
-              style={{ height: `${100 - vSplit.splitPct}%` }}
-            >
-              <EditorPanel />
-            </div>
-          )}
-
-          {/* Collapsed: show only editor */}
-          {isProblemCollapsed && (
-            <div className={styles.editorSection} style={{ height: '100%' }}>
-              <EditorPanel />
-            </div>
-          )}
-        </div>
-
-        {/* Horizontal drag handle */}
-        {!isProblemCollapsed && (
-          <div
-            className={styles.hDragHandle}
-            onMouseDown={hSplit.startDrag}
-            onTouchStart={hSplit.startDrag}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize left/right panel split"
-            tabIndex={0}
-          />
+      {/* ── View Container with mount transition ── */}
+      <div className={styles.viewWrapper} key={currentView}>
+        {/* ── Dashboard page ── */}
+        {currentView === 'dashboard' && (
+          <DashboardPage onNavigateToTutor={() => setCurrentView('tutor')} />
         )}
 
-        {/* Right panel — chat + hints */}
-        <div
-          className={styles.rightPanel}
-          style={{ flex: 1, minWidth: 0 }}
-        >
-          {/* Chat takes most of the right panel */}
-          <div className={styles.chatSection}>
-            <TutorChat />
-          </div>
+        {/* ── Notes page ── */}
+        {currentView === 'notes' && <NotesPage />}
 
-          {/* Hint ladder — pinned below chat */}
-          <HintLadder />
-        </div>
-      </main>
+        {/* ── Main tutoring workspace ── */}
+        {currentView === 'tutor' && (
+          <main
+            className={styles.main}
+            ref={hSplit.containerRef}
+            aria-label="Main tutoring workspace"
+          >
+            {/* Left panel — problem + editor, vertically split */}
+            <div
+              className={styles.leftPanel}
+              ref={vSplit.containerRef}
+              style={{
+                width: isProblemCollapsed ? '36px' : `${hSplit.splitPct}%`,
+                minWidth: isProblemCollapsed ? '36px' : undefined,
+              }}
+            >
+              {/* Problem panel — upper portion */}
+              <div
+                className={styles.problemSection}
+                style={{ height: isProblemCollapsed ? '100%' : `${vSplit.splitPct}%` }}
+              >
+                <ProblemPanel
+                  isCollapsed={isProblemCollapsed}
+                  onToggleCollapse={toggleProblem}
+                />
+              </div>
 
-      )}
+              {/* Vertical drag handle */}
+              {!isProblemCollapsed && (
+                <div
+                  className={styles.vDragHandle}
+                  onMouseDown={vSplit.startDrag}
+                  onTouchStart={vSplit.startDrag}
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label="Resize problem/editor split"
+                  tabIndex={0}
+                />
+              )}
+
+              {/* Editor panel — lower portion */}
+              {!isProblemCollapsed && (
+                <div
+                  className={styles.editorSection}
+                  style={{ height: `${100 - vSplit.splitPct}%` }}
+                >
+                  <EditorPanel />
+                </div>
+              )}
+
+              {/* Collapsed: show only editor */}
+              {isProblemCollapsed && (
+                <div className={styles.editorSection} style={{ height: '100%' }}>
+                  <EditorPanel />
+                </div>
+              )}
+            </div>
+
+            {/* Horizontal drag handle */}
+            {!isProblemCollapsed && (
+              <div
+                className={styles.hDragHandle}
+                onMouseDown={hSplit.startDrag}
+                onTouchStart={hSplit.startDrag}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize left/right panel split"
+                tabIndex={0}
+              />
+            )}
+
+            {/* Right panel — chat + hints */}
+            <div
+              className={styles.rightPanel}
+              style={{ flex: 1, minWidth: 0 }}
+            >
+              {/* Chat takes most of the right panel */}
+              <div className={styles.chatSection}>
+                <TutorChat />
+              </div>
+
+              {/* Hint ladder — pinned below chat */}
+              <HintLadder />
+            </div>
+          </main>
+        )}
+      </div>
 
       {/* ── Bottom bar (only in tutor view) ── */}
       {currentView === 'tutor' && <BottomBar onEndSession={handleEndSession} />}
