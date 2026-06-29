@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import problems, tutor, hints, sessions, notes, execute
+from .routers import problems, tutor, hints, sessions, notes, execute, dashboard
 from .services.gemini import get_gemini_model
 
 # ── Logging ────────────────────────────────────────────────────────
@@ -74,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(sessions.router)
     app.include_router(notes.router)
     app.include_router(execute.router)
+    app.include_router(dashboard.router)
 
     @app.get("/health", tags=["health"])
     async def health_check():
