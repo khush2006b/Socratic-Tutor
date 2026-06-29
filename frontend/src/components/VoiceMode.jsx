@@ -192,7 +192,8 @@ export default function VoiceMode({ onClose }) {
   const [isDragging, setIsDragging] = useState(false);
 
   const onPointerDown = useCallback((e) => {
-    // Only drag from the header bar
+    // Don't start drag when clicking buttons (e.g. the close button)
+    if (e.target.closest('button')) return;
     if (!panelRef.current) return;
     e.preventDefault();
     const rect = panelRef.current.getBoundingClientRect();
