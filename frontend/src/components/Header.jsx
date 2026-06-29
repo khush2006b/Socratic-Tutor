@@ -93,12 +93,32 @@ export default function Header({ onEndSession, currentView, onViewChange, isVoic
           </div>
         )}
 
-        {/* Notes nav */}
+        {/* Nav buttons */}
+        <button
+          id="btn-nav-dashboard"
+          className={`${styles.navBtn} ${currentView === 'dashboard' ? styles.navBtnActive : ''}`}
+          onClick={() => onViewChange('dashboard')}
+          aria-label="Go to dashboard"
+          title="Dashboard"
+        >
+          📊 Dashboard
+        </button>
+
+        <button
+          id="btn-nav-tutor"
+          className={`${styles.navBtn} ${currentView === 'tutor' ? styles.navBtnActive : ''}`}
+          onClick={() => onViewChange('tutor')}
+          aria-label="Go to tutor"
+          title="Tutor"
+        >
+          ⬡ Tutor
+        </button>
+
         <button
           id="btn-nav-notes"
           className={`${styles.navBtn} ${currentView === 'notes' ? styles.navBtnActive : ''}`}
-          onClick={() => onViewChange(currentView === 'notes' ? 'tutor' : 'notes')}
-          aria-label={currentView === 'notes' ? 'Back to tutor' : 'View session notes'}
+          onClick={() => onViewChange('notes')}
+          aria-label="View session notes"
           title="Session Notes"
         >
           📓 Notes
