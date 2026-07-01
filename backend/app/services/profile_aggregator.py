@@ -148,6 +148,23 @@ async def log_solved_problem(
                 "Logged solved problem: %s (pattern=%s, mastery=%s)",
                 problem_title, pattern, mastery_level,
             )
+
+            # ── Auto-mark daily recommendation as solved ──────────
+            try:
+                await asyncio.to_thread(
+                    lambda: db.table("daily_recommendations")
+                        .update({
+                            "status": "solved",
+                            "solved_at": datetime.now(timezone.utc).isoformat(),
+                        })
+                        .eq("student_id", student_id)
+                        .eq("problem_id", problem_id)
+                        .eq("status", "active")
+                        .execute()
+                )
+            except Exception as exc:
+                logger.debug("Daily recommendation mark-solved (non-critical): %s", exc)
+
             return result.data[0]
     except Exception as exc:
         logger.warning("Failed to log solved problem: %s", exc)
