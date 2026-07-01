@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import useAuthStore from '../store/authStore';
 import useSessionStore from '../store/sessionStore';
-import { fetchDashboard } from '../api/dashboard';
+import { fetchDashboard, refreshDailyQuestion } from '../api/dashboard';
 import { parseProblem } from '../api/tutor';
 import styles from './DashboardPage.module.css';
 
@@ -160,14 +160,26 @@ function StatsRow({ profile, streak }) {
 
 /* ── Daily Question ──────────────────────────────────────────── */
 
-function DailyQuestion({ question, onStart }) {
+function DailyQuestion({ question, onStart, onRefresh }) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   if (!question) return null;
+
+  const handleSkip = async () => {
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   return (
     <div className={styles.dailyCard}>
       <div className={styles.cardHeader}>
         <span className={styles.cardIcon}>🧠</span>
         <span className={styles.cardTitle}>Today's Challenge</span>
+        <span className={styles.aiBadge}>✨ AI Recommended</span>
       </div>
       <div className={styles.dailyProblem}>
         <span className={styles.dailyTitle}>
@@ -182,9 +194,18 @@ function DailyQuestion({ question, onStart }) {
           </span>
         </div>
         <p className={styles.dailyReason}>"{question.reason}"</p>
-        <button className={styles.startBtn} onClick={() => onStart(question)}>
-          Start Problem →
-        </button>
+        <div className={styles.dailyActions}>
+          <button className={styles.startBtn} onClick={() => onStart(question)}>
+            Start Problem →
+          </button>
+          <button
+            className={styles.skipBtn}
+            onClick={handleSkip}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? '⏳ Loading…' : 'Skip → New Question'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -367,6 +388,15 @@ export default function DashboardPage({ onNavigateToTutor }) {
     }
   }, [setProblem, setLoadingProblem, onNavigateToTutor]);
 
+  const handleRefreshQuestion = useCallback(async () => {
+    try {
+      const res = await refreshDailyQuestion();
+      setData(prev => ({ ...prev, daily_question: res.daily_question }));
+    } catch (e) {
+      console.error('Failed to refresh question:', e);
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <div className={styles.loading}>
@@ -415,7 +445,7 @@ export default function DashboardPage({ onNavigateToTutor }) {
       <div className={styles.contentGrid}>
         {/* Left column */}
         <div>
-          <DailyQuestion question={daily_question} onStart={handleStartProblem} />
+          <DailyQuestion question={daily_question} onStart={handleStartProblem} onRefresh={handleRefreshQuestion} />
           <div style={{ marginTop: 20 }}>
             <WeaknessAlerts
               misconceptions={misconceptions_active || []}
