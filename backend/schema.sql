@@ -184,6 +184,29 @@ create index if not exists idx_notes_student_id on notes(student_id);
 create index if not exists idx_notes_session_id on notes(session_id);
 
 
+-- ── Daily Recommendations ────────────────────────────────────────
+-- AI-generated daily question recommendations per student.
+-- Persisted until solved or skipped, then a new one is generated.
+
+create table if not exists daily_recommendations (
+  id              uuid primary key default gen_random_uuid(),
+  student_id      text not null,
+  problem_id      integer not null,
+  problem_title   text not null,
+  difficulty      text,
+  pattern         text,
+  reason          text,
+  status          text default 'active'
+                    check (status in ('active', 'solved', 'skipped')),
+  recommended_at  timestamptz default now(),
+  solved_at       timestamptz,
+  created_at      timestamptz default now()
+);
+
+create index if not exists idx_daily_rec_student_status
+  on daily_recommendations(student_id, status);
+
+
 -- ── Row Level Security (enable when using Supabase Auth in Stage 3) ──
 -- For Stage 2 (anonymous student_id), disable RLS and rely on API-level checks.
 -- Uncomment these when adding auth in Stage 3:
