@@ -38,7 +38,7 @@
   font-family: var(--font-sans);
   font-size: 12px;
   font-weight: var(--weight-semibold);
-  color: var(--color-text-secondary);
+  color: white ;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-sm);
@@ -48,12 +48,17 @@
   transition: all var(--duration-fast) var(--ease-standard);
 }
 
-.langSelect:focus,
-.langSelect:hover {
-  border-color: var(--color-accent);
-  color: #fff;
+.langSelect:focus{
+   border-color:  rgba(255, 255, 255, 0.06);
+  color: black ;
   background: rgba(255, 255, 255, 0.06);
 }
+.langSelect:hover {
+  border-color: var(--color-accent);
+  color: black;
+  background: rgba(255, 255, 255, 0.06);
+}
+
 
 /* ── I/O Toggle ──────────────────────────────────────────────── */
 .ioToggle {

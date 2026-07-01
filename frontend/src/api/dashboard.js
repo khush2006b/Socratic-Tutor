@@ -13,3 +13,12 @@ export async function fetchDashboard() {
   const res = await apiFetch('/api/dashboard/me');
   return res.json();
 }
+
+/**
+ * Refresh the AI-recommended daily question.
+ * @returns {Promise<object>} New daily question payload
+ */
+export async function refreshDailyQuestion() {
+  const res = await apiFetch('/api/dashboard/question/refresh', { method: 'POST' });
+  return res.json();
+}
