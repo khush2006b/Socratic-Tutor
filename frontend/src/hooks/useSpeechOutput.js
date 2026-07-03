@@ -109,16 +109,17 @@ function extractEntries(text) {
 
 // ── Markdown stripper ────────────────────────────────────────────
 // Remove markdown formatting that sounds odd when spoken aloud.
+// IMPORTANT: Keep the TEXT inside formatting — only strip the syntax characters.
 function stripMarkdown(text) {
   return text
-    .replace(/```[\s\S]*?```/g, '')         // fenced code blocks → omit
-    .replace(/`[^`]+`/g,         '')        // inline code → omit
-    .replace(/\*\*([^*]+)\*\*/g, '$1')      // bold → plain
-    .replace(/\*([^*]+)\*/g,     '$1')      // italic → plain
-    .replace(/#{1,6}\s+/g,       '')        // headers → plain
+    .replace(/```[\s\S]*?```/g, ' (code block omitted) ')  // fenced code blocks → brief mention
+    .replace(/`([^`]+)`/g,       '$1')   // inline code → keep text, strip backticks
+    .replace(/\*\*([^*]+)\*\*/g, '$1')   // bold → plain
+    .replace(/\*([^*]+)\*/g,     '$1')   // italic → plain
+    .replace(/#{1,6}\s+/g,       '')     // headers → plain
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links → label only
-    .replace(/^[-*+]\s+/gm,      '')        // list bullets → omit
-    .replace(/\s{2,}/g,          ' ')       // collapse whitespace
+    .replace(/^[-*+]\s+/gm,      '')    // list bullets → omit marker
+    .replace(/\s{2,}/g,          ' ')    // collapse whitespace
     .trim();
 }
 
