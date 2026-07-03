@@ -46,7 +46,7 @@ _VOICE_TAG_PATTERNS = {
 VALID_MASTERY_LEVELS = {"recognition", "application", "generalisation"}
 VALID_VIZ_TYPES = {
     "sliding_window", "bfs", "dfs", "two_pointers",
-    "stack", "recursion", "heap", "dp_table",
+    "stack", "recursion", "trie",
 }
 VALID_CALIBRATION_TYPES = {
     "reasoning_strong", "reasoning_weak", "transfer_shown",
