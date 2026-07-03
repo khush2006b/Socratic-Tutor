@@ -83,6 +83,7 @@ export default function TutorChat() {
   const studentId        = useSessionStore((s) => s.studentId);
   const sessionId        = useSessionStore((s) => s.sessionId);
   const problemSolved    = useSessionStore((s) => s.problemSolved);
+  const vizTriggers      = useSessionStore((s) => s.vizTriggers);
 
   const addMessage       = useSessionStore((s) => s.addMessage);
   const startStreaming   = useSessionStore((s) => s.startStreaming);
@@ -97,7 +98,7 @@ export default function TutorChat() {
   const abortRef     = useRef(null);
   const inputRef     = useRef(null);
 
-  /* Auto-scroll to bottom on new messages */
+  /* Auto-scroll to bottom on new messages or visualization */
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({
@@ -105,7 +106,7 @@ export default function TutorChat() {
         behavior: 'smooth',
       });
     }
-  }, [messages, isStreaming, streamingContent]);
+  }, [messages, isStreaming, streamingContent, vizTriggers]);
 
   /* Abort any in-flight stream on unmount */
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -230,9 +231,6 @@ export default function TutorChat() {
           </div>
         )}
 
-        {/* 📊 Algorithm Visualization (triggered by [TRIGGER_VISUALIZATION] tags) */}
-        <VisualizationPanel />
-
         {messages.length === 0 && phase === 'idle' && (
           <div className={`${styles.emptyState} animate-fade-in`}>
             <span className={styles.emptyIcon} aria-hidden="true">⬡</span>
@@ -254,6 +252,9 @@ export default function TutorChat() {
         {isStreaming && !streamingContent && (
           <TypingIndicator />
         )}
+
+        {/* 📊 Algorithm Visualization (triggered by [TRIGGER_VISUALIZATION] tags) */}
+        <VisualizationPanel />
       </div>
 
       {/* Input area */}
