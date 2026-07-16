@@ -101,7 +101,8 @@ async def extract_grounding(problem: Problem) -> dict:
     import google.generativeai as genai
 
     settings = get_settings()
-    genai.configure(api_key=settings.gemini_api_key)
+    from .gemini import get_current_api_key
+    genai.configure(api_key=get_current_api_key())
     model = genai.GenerativeModel(
         model_name=settings.gemini_model,
         generation_config=genai.GenerationConfig(
@@ -150,7 +151,8 @@ async def check_drift(tutor_response: str, grounding: dict) -> list[str]:
     import google.generativeai as genai
 
     settings = get_settings()
-    genai.configure(api_key=settings.gemini_api_key)
+    from .gemini import get_current_api_key
+    genai.configure(api_key=get_current_api_key())
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",   # use cheaper model for checking
         generation_config=genai.GenerationConfig(

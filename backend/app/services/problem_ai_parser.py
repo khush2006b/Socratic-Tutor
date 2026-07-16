@@ -59,9 +59,10 @@ async def parse_problem_from_text(problem_text: str) -> Problem:
     from langchain_core.messages import HumanMessage
 
     settings = get_settings()
+    from .gemini import get_current_api_key
     llm = ChatGoogleGenerativeAI(
         model=settings.gemini_model,
-        google_api_key=settings.gemini_api_key,
+        google_api_key=get_current_api_key(),
         temperature=0,
         max_retries=0,
     )
@@ -82,7 +83,8 @@ async def parse_problem_from_image(image_data: str, mime_type: str = "image/png"
     settings = get_settings()
 
     # Use google-generativeai directly for multimodal (image) input
-    genai.configure(api_key=settings.gemini_api_key)
+    from .gemini import get_current_api_key
+    genai.configure(api_key=get_current_api_key())
     model = genai.GenerativeModel(model_name=settings.gemini_model)
 
     image_bytes = base64.b64decode(image_data)
