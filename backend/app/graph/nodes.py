@@ -47,33 +47,33 @@ def get_llm(use_fallback: bool = False):
     global _primary_llm, _fallback_llm
 
     from langchain_google_genai import ChatGoogleGenerativeAI
+    from ..services.gemini import get_current_api_key
     settings = get_settings()
+    current_key = get_current_api_key()
 
     if use_fallback:
-        if _fallback_llm is None:
-            _fallback_llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
-                google_api_key=settings.gemini_api_key,
-                temperature=0.7,
-                top_p=0.9,
-                max_output_tokens=1536,
-                streaming=True,
-                max_retries=0,          # no tenacity retry — we handle fallback ourselves
-            )
-            logger.info("Fallback LLM initialised: gemini-1.5-flash")
-        return _fallback_llm
-
-    if _primary_llm is None:
-        _primary_llm = ChatGoogleGenerativeAI(
-            model=settings.gemini_model,
-            google_api_key=settings.gemini_api_key,
+        # Always rebuild with current rotated key
+        _fallback_llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            google_api_key=current_key,
             temperature=0.7,
             top_p=0.9,
-            max_output_tokens=2048,
+            max_output_tokens=1536,
             streaming=True,
-            max_retries=0,              # no tenacity retry — we handle fallback ourselves
+            max_retries=0,
         )
-        logger.info("Primary LLM initialised: %s", settings.gemini_model)
+        return _fallback_llm
+
+    # Always rebuild with current rotated key
+    _primary_llm = ChatGoogleGenerativeAI(
+        model=settings.gemini_model,
+        google_api_key=current_key,
+        temperature=0.7,
+        top_p=0.9,
+        max_output_tokens=2048,
+        streaming=True,
+        max_retries=0,
+    )
     return _primary_llm
 
 
@@ -93,7 +93,7 @@ def _is_looping(messages: list[dict], threshold: int = 3) -> bool:
         return False
     last_n = tutor_msgs[-threshold:]
     first_words = [m[:50].strip().lower() for m in last_n]
-    return len(set(first_words)) == 1  # all identical starts
+    return len(set(first_words)) == 1  
 
 
 # ── Helper: parse frontend message list into LangChain messages ───
